@@ -70,9 +70,15 @@ Docs: https://inspect.aisi.org.uk/
 
 ## Best Practices
 
+### OpenRouter Provider
+- Set `OPENROUTER_API_KEY` environment variable
+- Model format: `openrouter/<provider>/<model>` e.g. `openrouter/google/gemini-2.5-pro-preview-06-05`
+- Requires `openai` package: `uv add openai`
+
 ### Model Interaction
-- Use `get_model()` to get the configured model instance
+- Use `get_model("openrouter/...")` to get specific model
 - Use `model.generate(messages)` for single-turn generation
+- Use `model.generate(messages, config=GenerateConfig(...))` for custom settings
 - Use `model.generate_loop(messages, tools=...)` for multi-turn with tool calling
 
 ### Messages
@@ -87,15 +93,16 @@ Docs: https://inspect.aisi.org.uk/
 
 ### Patterns
 ```python
-from inspect_ai.model import ChatMessageSystem, ChatMessageUser, get_model
+from inspect_ai.model import ChatMessageSystem, ChatMessageUser, GenerateConfig, get_model
 
 async def my_agent(prompt: str) -> dict:
-    model = get_model()
+    model = get_model("openrouter/google/gemini-2.5-pro-preview-06-05")
     messages = [
         ChatMessageSystem(content="You are a helpful assistant."),
         ChatMessageUser(content=prompt),
     ]
-    response = await model.generate(messages)
+    config = GenerateConfig(temperature=0.7, max_tokens=4096)
+    response = await model.generate(messages, config=config)
     return parse_json(response.completion)
 ```
 
