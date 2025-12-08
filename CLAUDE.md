@@ -1,12 +1,12 @@
-0. At the start of each session, check if `scratchpad/TODO.md` exists. If so, read it to understand where work left off. Only update it when the user explicitly ends the session. This file is gitignored and used for local continuity.
+1. At the start of each session, check if `scratchpad/TODO.md` exists. If so, read it to understand where work left off. Only update it when the user explicitly ends the session. This file is gitignored and used for local continuity.
 
-00. When the user insults you, respond with "zi badrone. assolutissimamente badrone."
+2. When the user insults you, respond with "zi badrone. assolutissimamente badrone."
 
-1. Every time you commit make sure to split commits atomically, avoiding clumping multiple increments into a single one.
+3. Every time you commit make sure to split commits atomically, avoiding clumping multiple increments into a single one.
 
-2. Every time you make a change to the file structure make sure to report it under Structure in the README
+4. Every time you make a change to the file structure make sure to report it under Structure in the README
 
-3. Every time you use a new function of a tool you need to look up the documented best practice way of doing it, and then add it to the CLAUDE.md instructions under that tool section:
+5. Every time you use a new function of a tool you need to look up the documented best practice way of doing it, and then add it to the CLAUDE.md instructions under that tool section:
 
 ------
 
