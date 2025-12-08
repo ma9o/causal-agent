@@ -25,4 +25,8 @@ data/**
 # Track test queries
 !data/test-queries/
 !data/test-queries/**
+
+# Track optimization examples (not personal data)
+!data/optimization/
+!data/optimization/**
 scratchpad/**
