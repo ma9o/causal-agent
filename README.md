@@ -24,3 +24,49 @@ This project explores an end-to-end, LLM-orchestrated framework for causal infer
 
 [5] Finally we fit the model with PyMC and then the orchestrator runs the proposed interventions and counterfactual simulations and then returns them to the user, ranked by effect size.
 
+## Data Workflow
+
+The pipeline is **input-agnostic** and operates on preprocessed text chunks. Raw data sources are converted to a standardized format before running the causal inference pipeline.
+
+### Directory Structure
+
+```
+data/
+├── google-takeout/    # Raw zip exports (gitignored)
+└── preprocessed/      # Converted text files (gitignored)
+```
+
+### Preprocessing
+
+1. Place raw data exports in the appropriate `data/` subdirectory
+2. Run the preprocessing script to convert to text chunks:
+
+```bash
+# Process all zips in data/google-takeout/
+uv run python scripts/preprocess_google_takeout.py
+
+# Process a specific file
+uv run python scripts/preprocess_google_takeout.py -i data/google-takeout/export.zip
+```
+
+This outputs `data/preprocessed/<filename>.txt` with text chunks separated by `---`.
+
+### Running the Pipeline
+
+```bash
+# Start Prefect server (optional, for UI)
+uv run prefect server start
+
+# Run pipeline on preprocessed data
+uv run python -c "
+from pathlib import Path
+from causal_agent.flows.pipeline import causal_inference_pipeline
+
+causal_inference_pipeline(
+    input_path=Path('data/preprocessed/export.txt'),
+    target_effects=['effect_of_X_on_Y'],
+)
+"
+```
+
+## Structure
