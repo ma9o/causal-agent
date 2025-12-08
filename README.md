@@ -18,6 +18,7 @@ The orchestrator LLM translates these informal queries into formal causal struct
 - uv
 - Prefect for pipeline orchestration
 - AISI's Inspect agent framework
+- DSPy for prompt optimization
 - NetworkX for causal DAG representation
 - DoWhy for identifiability checks and sensitivity analysis
 - PyMC for Bayesian GLM estimation
@@ -60,7 +61,7 @@ uv run python scripts/preprocess_google_takeout.py
 uv run python scripts/preprocess_google_takeout.py -i data/google-takeout/export.zip
 ```
 
-This outputs `data/preprocessed/<filename>_<timestamp>.txt` with text chunks separated by `---`.
+This outputs `data/preprocessed/google_activity_<timestamp>.txt` with one text chunk per line.
 
 ### Running the Pipeline
 

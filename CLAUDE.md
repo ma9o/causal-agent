@@ -168,5 +168,54 @@ Docs: https://networkx.org/documentation/stable/
 - Check for cycles: `nx.is_directed_acyclic_graph(G)`
 - Add node attributes: `G.add_node(name, dtype='continuous', ...)`
 
-# ArViz 
+# ArViz
 Docs: https://python.arviz.org/en/stable/index.html
+
+# DSPy for prompt optimization
+Docs: https://dspy.ai/
+
+## Best Practices
+
+### Signatures
+Define input/output contracts with type hints:
+```python
+class StructureProposal(dspy.Signature):
+    """Propose causal model structure from data."""
+    question: str = dspy.InputField()
+    data_sample: str = dspy.InputField()
+    structure: str = dspy.OutputField(desc="JSON with dimensions, edges, etc.")
+```
+
+### Modules
+- `dspy.Predict(Signature)` - basic prediction
+- `dspy.ChainOfThought(Signature)` - adds reasoning steps
+- `dspy.ReAct(Signature, tools=[...])` - reasoning + actions
+
+### LM Configuration
+```python
+import dspy
+lm = dspy.LM("openrouter/google/gemini-2.5-pro-preview-06-05")
+dspy.configure(lm=lm)
+```
+
+### Optimizers
+- `LabeledFewShot(k=8)` - use labeled examples directly
+- `BootstrapFewShot(metric=fn)` - learn demos from successful runs
+- `MIPROv2(metric=fn)` - instruction + demo optimization with Bayesian search
+
+### Optimization Pattern
+```python
+from dspy.teleprompt import MIPROv2
+
+def metric(example, pred, trace=None):
+    # Return True/False or 0-1 score
+    return validate_structure(pred.structure)
+
+optimizer = MIPROv2(metric=metric, num_threads=4)
+compiled = optimizer.compile(program, trainset=examples)
+compiled.save("optimized_program.json")
+```
+
+### Data Split
+- 20% train, 80% validation (prompt optimizers overfit small train sets)
+- Aim for 30-300 training examples
