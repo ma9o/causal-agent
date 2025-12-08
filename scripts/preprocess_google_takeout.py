@@ -141,7 +141,8 @@ def main():
         print(f"Processing {zip_path.name}...")
         try:
             df = parse_conversations_zip(zip_path)
-            output_path = args.output_dir / f"{zip_path.stem}.txt"
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            output_path = args.output_dir / f"{zip_path.stem}_{timestamp}.txt"
             export_as_text_chunks(df, output_path)
         except Exception as e:
             print(f"  Error: {e}")
