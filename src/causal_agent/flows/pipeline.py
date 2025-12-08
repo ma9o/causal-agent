@@ -4,12 +4,14 @@ from prefect import flow, task
 from prefect.cache_policies import INPUTS
 from typing import Any
 
+from causal_agent.utils.data import load_text_chunks as load_text_chunks_util
+from causal_agent.utils.data import resolve_input_path
+
 
 @task(cache_policy=INPUTS)
 def load_text_chunks(input_path: Path, separator: str = "\n\n---\n\n") -> list[str]:
     """Stage 0: Load preprocessed text chunks from file."""
-    content = input_path.read_text()
-    return content.split(separator)
+    return load_text_chunks_util(input_path, separator)
 
 
 @task(retries=2, retry_delay_seconds=30, cache_policy=INPUTS)
@@ -72,21 +74,24 @@ def run_interventions(fitted_model: Any, interventions: list[str]) -> list[dict]
 
 @flow(log_prints=True)
 def causal_inference_pipeline(
-    input_path: Path,
     target_effects: list[str],
+    input_file: str | None = None,
     chunk_separator: str = "\n\n---\n\n",
 ):
     """
     Main causal inference pipeline.
 
     Args:
-        input_path: Path to preprocessed text file (chunks separated by separator)
         target_effects: Causal effects to estimate
+        input_file: Filename in data/preprocessed/ (default: latest file)
         chunk_separator: Delimiter between text chunks
     """
-    # Stage 0: Load preprocessed text chunks
+    # Stage 0: Resolve input and load chunks
+    input_path = resolve_input_path(input_file)
+    print(f"Using input file: {input_path.name}")
+
     chunks = load_text_chunks(input_path, chunk_separator)
-    print(f"Loaded {len(chunks)} chunks from {input_path}")
+    print(f"Loaded {len(chunks)} chunks")
 
     # Stage 1: Propose structure from sample
     schema = propose_structure(chunks[:3])
@@ -112,3 +117,11 @@ def causal_inference_pipeline(
     results = run_interventions(fitted, target_effects)
 
     return results
+
+
+if __name__ == "__main__":
+    # Serve the flow for UI access
+    causal_inference_pipeline.serve(
+        name="causal-inference",
+        tags=["causal", "llm"],
+    )
