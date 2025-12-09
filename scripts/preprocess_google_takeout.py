@@ -105,8 +105,10 @@ def export_as_text_chunks(df: pl.DataFrame, output_path: Path) -> None:
     """Export dataframe as newline-delimited text chunks."""
     chunks = []
     for row in df.iter_rows(named=True):
+        dt = row['datetime']
+        ts = dt.strftime("%Y-%m-%d %H:%M")
         loc_str = f" @ {row['location']}" if row['location'] else ""
-        chunk = f"[{row['datetime']}] ({row['day_of_week']} {row['hour']:02d}:00){loc_str} [{row['activity_type']}] {row['content']}"
+        chunk = f"[{ts}]{loc_str} [{row['activity_type']}] {row['content']}"
         chunks.append(chunk)
 
     output_path.write_text("\n".join(chunks))
