@@ -1,11 +1,18 @@
 from pydantic import BaseModel, Field
 
 
+class DimensionDescription(BaseModel):
+    """Description of a dimension with time granularity."""
+
+    text: str = Field(description="What this variable represents")
+    time_granularity: str = Field(description="'hourly', 'daily', 'weekly', 'monthly', 'yearly', or 'none'")
+
+
 class Dimension(BaseModel):
     """A candidate dimension/variable for the causal model."""
 
-    name: str = Field(description="Variable name (eg sleep_quality_weekly)")
-    description: str = Field(description="What this variable represents, including time granularity")
+    name: str = Field(description="Variable name (eg sleep_quality)")
+    description: DimensionDescription = Field(description="What this variable represents and its time granularity")
     dtype: str = Field(description="Data type: 'continuous', 'categorical', 'binary', 'ordinal'")
     is_autocorrelated: bool = Field(description="Whether this variable has temporal autocorrelation")
 
@@ -15,7 +22,7 @@ class CausalEdge(BaseModel):
 
     cause: str = Field(description="The cause variable")
     effect: str = Field(description="The effect variable")
-    lag: int = Field(default=0, description="Time lag (0=contemporaneous, 1=cause at t-1 affects effect at t)")
+    lag: int = Field(default=0, description="Time lag in hours (0=contemporaneous, 24=cause at t-24h affects effect at t)")
 
 
 class ProposedStructure(BaseModel):

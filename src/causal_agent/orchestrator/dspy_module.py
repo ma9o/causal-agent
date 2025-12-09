@@ -12,8 +12,8 @@ class StructureProposal(dspy.Signature):
     question: str = dspy.InputField(desc="Natural language causal research question")
     data_sample: str = dspy.InputField(desc="Sample chunks from the dataset")
     structure: str = dspy.OutputField(
-        desc="JSON with dimensions (name, description with time granularity, dtype, is_autocorrelated), "
-        "edges (cause, effect, lag)"
+        desc="JSON with dimensions (name, description: {text, time_granularity}, dtype, is_autocorrelated), "
+        "edges (cause, effect, lag in hours)"
     )
 
 
