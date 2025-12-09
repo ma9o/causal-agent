@@ -4,13 +4,10 @@ from pydantic import BaseModel, Field
 class Dimension(BaseModel):
     """A candidate dimension/variable for the causal model."""
 
-    name: str = Field(description="Variable name (snake_case)")
-    description: str = Field(description="What this variable represents")
+    name: str = Field(description="Variable name (eg sleep_quality_weekly)")
+    description: str = Field(description="What this variable represents, including time granularity")
     dtype: str = Field(description="Data type: 'continuous', 'categorical', 'binary', 'ordinal'")
-    time_granularity: str = Field(
-        description="Time granularity: 'hourly', 'daily', 'weekly', 'monthly', 'yearly', or 'none'"
-    )
-    autocorrelation: int = Field(description="Autocorrelation lag (0=none, 1=AR(1), etc.)")
+    is_autocorrelated: bool = Field(description="Whether this variable has temporal autocorrelation")
 
 
 class CausalEdge(BaseModel):
