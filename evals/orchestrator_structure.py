@@ -4,11 +4,11 @@ Evaluates top-tier LLMs with max thinking budget on their ability to propose
 valid DSEM structures given a causal question and sample data chunks.
 
 Usage:
-    inspect eval src/causal_agent/orchestrator/eval.py --model openrouter/anthropic/claude-opus-4.5
-    inspect eval src/causal_agent/orchestrator/eval.py --model openrouter/google/gemini-3-pro-preview-20251117
-    inspect eval src/causal_agent/orchestrator/eval.py --model openrouter/openai/gpt-5.1
-    inspect eval src/causal_agent/orchestrator/eval.py --model openrouter/deepseek/deepseek-v3.2
-    inspect eval src/causal_agent/orchestrator/eval.py --model openrouter/moonshotai/kimi-k2
+    inspect eval evals/orchestrator_structure.py --model openrouter/anthropic/claude-opus-4.5
+    inspect eval evals/orchestrator_structure.py --model openrouter/google/gemini-3-pro-preview-20251117
+    inspect eval evals/orchestrator_structure.py --model openrouter/openai/gpt-5.1
+    inspect eval evals/orchestrator_structure.py --model openrouter/deepseek/deepseek-v3.2
+    inspect eval evals/orchestrator_structure.py --model openrouter/moonshotai/kimi-k2
 """
 
 import json

@@ -84,27 +84,27 @@ Evaluate LLM performance on structure proposal tasks using Inspect AI. Only top-
 
 ```bash
 # Run eval with Claude Opus 4.5
-uv run inspect eval src/causal_agent/orchestrator/eval.py \
+uv run inspect eval evals/orchestrator_structure.py \
     --model openrouter/anthropic/claude-opus-4.5
 
 # Run with Gemini 3 Pro
-uv run inspect eval src/causal_agent/orchestrator/eval.py \
+uv run inspect eval evals/orchestrator_structure.py \
     --model openrouter/google/gemini-3-pro-preview-20251117
 
 # Run with GPT-5.1
-uv run inspect eval src/causal_agent/orchestrator/eval.py \
+uv run inspect eval evals/orchestrator_structure.py \
     --model openrouter/openai/gpt-5.1
 
 # Run with DeepSeek V3.2
-uv run inspect eval src/causal_agent/orchestrator/eval.py \
+uv run inspect eval evals/orchestrator_structure.py \
     --model openrouter/deepseek/deepseek-v3.2
 
 # Run with Kimi K2
-uv run inspect eval src/causal_agent/orchestrator/eval.py \
+uv run inspect eval evals/orchestrator_structure.py \
     --model openrouter/moonshotai/kimi-k2
 
 # Customize eval parameters
-uv run inspect eval src/causal_agent/orchestrator/eval.py \
+uv run inspect eval evals/orchestrator_structure.py \
     --model openrouter/anthropic/claude-opus-4.5 \
     -T n_chunks=10 \
     -T seed=123 \
@@ -169,10 +169,11 @@ causal-agent/
 ├── scripts/
 │   ├── preprocess_google_takeout.py
 │   └── sample_data_chunks.py            # Sample chunks for manual testing
+├── evals/
+│   └── orchestrator_structure.py  # Inspect AI eval for structure proposals
 ├── src/causal_agent/
 │   ├── orchestrator/       # Orchestrator LLM (structure proposal, merging)
 │   │   ├── agents.py       # Inspect agents
-│   │   ├── eval.py         # Inspect AI eval for structure proposals
 │   │   ├── prompts.py      # System prompts
 │   │   ├── schemas.py      # Pydantic output schemas
 │   │   └── scoring.py      # Structure scoring function
