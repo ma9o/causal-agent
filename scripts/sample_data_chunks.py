@@ -15,13 +15,23 @@ from pathlib import Path
 from causal_agent.utils.data import (
     CHUNK_SIZE,
     SAMPLE_CHUNKS,
-    get_latest_preprocessed_file,
     load_text_chunks,
     PROCESSED_DIR,
 )
 from causal_agent.orchestrator.prompts import STRUCTURE_PROPOSER_SYSTEM
 
 OUTPUT_FILE = PROCESSED_DIR / "orchestrator-samples-manual.txt"
+
+
+def get_latest_data_file() -> Path | None:
+    """Find the most recent preprocessed data file (excluding script outputs)."""
+    txt_files = [
+        f for f in PROCESSED_DIR.glob("*.txt")
+        if f.name != OUTPUT_FILE.name
+    ]
+    if not txt_files:
+        return None
+    return max(txt_files, key=lambda p: p.stat().st_mtime)
 
 
 def sample_chunks(input_file: Path, n: int, seed: int | None = None) -> list[str]:
@@ -62,9 +72,9 @@ def main():
     if args.input:
         input_file = PROCESSED_DIR / args.input
     else:
-        input_file = get_latest_preprocessed_file()
+        input_file = get_latest_data_file()
         if not input_file:
-            raise FileNotFoundError(f"No .txt files found in {PROCESSED_DIR}")
+            raise FileNotFoundError(f"No data files found in {PROCESSED_DIR}")
 
     print(f"Sampling from: {input_file.name}", file=__import__("sys").stderr)
     print(f"Chunk size: {CHUNK_SIZE} lines per chunk", file=__import__("sys").stderr)
