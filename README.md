@@ -80,41 +80,32 @@ Output goes to `data/processed/orchestrator-samples-manual.txt`.
 
 ### Running Evaluations
 
-Evaluate LLM performance on structure proposal tasks using Inspect AI. Only top-tier models with max thinking budget are used:
+Evaluate LLM performance on structure proposal tasks using Inspect AI. Only top-tier models with max thinking budget are used.
 
+**Run all models in parallel:**
 ```bash
-# Run eval with Claude Opus 4.5
+# Run all 5 models concurrently (recommended)
+uv run python evals/scripts/run_parallel_evals.py
+
+# Run specific models using aliases
+uv run python evals/scripts/run_parallel_evals.py --models claude gemini gpt
+
+# Customize parameters
+uv run python evals/scripts/run_parallel_evals.py -n 10 --seed 123
+
+# Available aliases: claude, gemini, gpt, deepseek, kimi
+```
+
+**Run individual models:**
+```bash
 uv run inspect eval evals/orchestrator_structure.py \
     --model openrouter/anthropic/claude-opus-4.5
 
-# Run with Gemini 3 Pro
-uv run inspect eval evals/orchestrator_structure.py \
-    --model openrouter/google/gemini-3-pro-preview-20251117
-
-# Run with GPT-5.1
-uv run inspect eval evals/orchestrator_structure.py \
-    --model openrouter/openai/gpt-5.1
-
-# Run with DeepSeek V3.2
-uv run inspect eval evals/orchestrator_structure.py \
-    --model openrouter/deepseek/deepseek-v3.2
-
-# Run with Kimi K2
-uv run inspect eval evals/orchestrator_structure.py \
-    --model openrouter/moonshotai/kimi-k2
-
-# Customize eval parameters
-uv run inspect eval evals/orchestrator_structure.py \
-    --model openrouter/anthropic/claude-opus-4.5 \
-    -T n_chunks=10 \
-    -T seed=123 \
-    --limit 3
-
-# View results
+# View detailed results
 uv run inspect view
 ```
 
-Logs are saved to `logs/` directory. The eval measures whether models can generate valid DSEM structures that pass schema validation.
+Logs are saved to `logs/` directory. The eval scores models on cumulative points for valid DSEM structures.
 
 ### Running the Pipeline
 
@@ -170,6 +161,7 @@ causal-agent/
 │   ├── orchestrator_structure.py  # Inspect AI eval for structure proposals
 │   └── scripts/
 │       ├── preprocess_google_takeout.py  # Convert raw data to text chunks
+│       ├── run_parallel_evals.py         # Run all models in parallel
 │       └── sample_data_chunks.py         # Sample chunks for manual testing
 ├── src/causal_agent/
 │   ├── orchestrator/       # Orchestrator LLM (structure proposal, merging)
