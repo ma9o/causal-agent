@@ -1,16 +1,12 @@
 """Inspect AI evaluation for the orchestrator DSEM structure proposals.
 
-Evaluates multiple LLMs on their ability to propose valid DSEM structures
-given a causal question and sample data chunks.
+Evaluates top-tier LLMs with max thinking budget on their ability to propose
+valid DSEM structures given a causal question and sample data chunks.
 
 Usage:
-    inspect eval src/causal_agent/orchestrator/eval.py --model openrouter/google/gemini-2.0-flash-001
-    inspect eval src/causal_agent/orchestrator/eval.py --model openrouter/anthropic/claude-sonnet-4
-
-Run multiple models:
-    inspect eval src/causal_agent/orchestrator/eval.py --model openrouter/google/gemini-2.5-flash
-    inspect eval src/causal_agent/orchestrator/eval.py --model openrouter/anthropic/claude-sonnet-4
-    inspect eval src/causal_agent/orchestrator/eval.py --model openrouter/openai/gpt-4o
+    inspect eval src/causal_agent/orchestrator/eval.py --model openrouter/anthropic/claude-opus-4.5
+    inspect eval src/causal_agent/orchestrator/eval.py --model openrouter/google/gemini-3-pro-preview-20251117
+    inspect eval src/causal_agent/orchestrator/eval.py --model openrouter/openai/gpt-5.1
 """
 
 import json
@@ -30,29 +26,18 @@ from causal_agent.orchestrator.scoring import _count_rule_points
 from causal_agent.orchestrator.schemas import DSEMStructure
 from causal_agent.utils.data import (
     PROCESSED_DIR,
-    load_text_chunks,
+    get_latest_preprocessed_file,
+    sample_chunks,
 )
 
 # Files to exclude when finding the latest data file (script outputs)
 EXCLUDE_FILES = {"orchestrator-samples-manual.txt"}
 
-
-def get_latest_data_file() -> str:
-    """Find the most recent preprocessed data file, excluding script outputs."""
-    txt_files = [
-        f for f in PROCESSED_DIR.glob("*.txt")
-        if f.name not in EXCLUDE_FILES
-    ]
-    if not txt_files:
-        raise FileNotFoundError(f"No data files found in {PROCESSED_DIR}")
-    return max(txt_files, key=lambda p: p.stat().st_mtime)
-
-
-# Default models to compare (via OpenRouter)
+# Top-tier models for orchestrator eval (via OpenRouter)
 DEFAULT_MODELS = [
-    "openrouter/google/gemini-2.5-pro-preview-06-05",
-    "openrouter/anthropic/claude-sonnet-4",
-    "openrouter/openai/gpt-4o",
+    "openrouter/anthropic/claude-opus-4.5",
+    "openrouter/google/gemini-3-pro-preview-20251117",
+    "openrouter/openai/gpt-5.1",
 ]
 
 
@@ -86,28 +71,6 @@ def load_eval_questions() -> list[EvalQuestion]:
     ]
 
 
-def sample_chunks_evenly(input_file, n: int, seed: int) -> list[str]:
-    """Sample n chunks evenly spaced across the input file with jitter."""
-    import random
-
-    chunks = load_text_chunks(input_file)
-    random.seed(seed)
-    n = min(n, len(chunks))
-
-    if n >= len(chunks):
-        return chunks
-
-    segment_size = len(chunks) / n
-    sampled = []
-    for i in range(n):
-        segment_start = int(i * segment_size)
-        segment_end = int((i + 1) * segment_size)
-        idx = random.randint(segment_start, segment_end - 1)
-        sampled.append(chunks[idx])
-
-    return sampled
-
-
 def format_chunks(chunks: list[str]) -> str:
     """Format chunks for the prompt."""
     parts = []
@@ -139,10 +102,12 @@ def create_eval_dataset(
         if not data_file.exists():
             raise FileNotFoundError(f"File not found: {data_file}")
     else:
-        data_file = get_latest_data_file()
+        data_file = get_latest_preprocessed_file(exclude=EXCLUDE_FILES)
+        if not data_file:
+            raise FileNotFoundError(f"No data files found in {PROCESSED_DIR}")
 
     # Sample chunks (same for all questions for fair comparison)
-    chunks = sample_chunks_evenly(data_file, n_chunks, seed)
+    chunks = sample_chunks(data_file, n_chunks, seed)
     formatted_chunks = format_chunks(chunks)
 
     samples = []

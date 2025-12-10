@@ -80,20 +80,24 @@ Output goes to `data/processed/orchestrator-samples-manual.txt`.
 
 ### Running Evaluations
 
-Evaluate LLM performance on structure proposal tasks using Inspect AI:
+Evaluate LLM performance on structure proposal tasks using Inspect AI. Only top-tier models with max thinking budget are used:
 
 ```bash
-# Run eval with a specific model
+# Run eval with Claude Opus 4.5
 uv run inspect eval src/causal_agent/orchestrator/eval.py \
-    --model openrouter/google/gemini-2.0-flash-001
+    --model openrouter/anthropic/claude-opus-4.5
 
-# Run with Claude
+# Run with Gemini 3 Pro
 uv run inspect eval src/causal_agent/orchestrator/eval.py \
-    --model openrouter/anthropic/claude-sonnet-4
+    --model openrouter/google/gemini-3-pro-preview-20251117
+
+# Run with GPT-5.1
+uv run inspect eval src/causal_agent/orchestrator/eval.py \
+    --model openrouter/openai/gpt-5.1
 
 # Customize eval parameters
 uv run inspect eval src/causal_agent/orchestrator/eval.py \
-    --model openrouter/openai/gpt-4o \
+    --model openrouter/anthropic/claude-opus-4.5 \
     -T n_chunks=10 \
     -T seed=123 \
     --limit 3

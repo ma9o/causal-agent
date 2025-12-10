@@ -9,55 +9,18 @@ Usage:
 """
 
 import argparse
-import random
-from pathlib import Path
 
 from causal_agent.utils.data import (
     CHUNK_SIZE,
     SAMPLE_CHUNKS,
-    load_text_chunks,
     PROCESSED_DIR,
+    get_latest_preprocessed_file,
+    sample_chunks,
 )
 from causal_agent.orchestrator.prompts import STRUCTURE_PROPOSER_SYSTEM
 
 OUTPUT_FILE = PROCESSED_DIR / "orchestrator-samples-manual.txt"
-
-
-def get_latest_data_file() -> Path | None:
-    """Find the most recent preprocessed data file (excluding script outputs)."""
-    txt_files = [
-        f for f in PROCESSED_DIR.glob("*.txt")
-        if f.name != OUTPUT_FILE.name
-    ]
-    if not txt_files:
-        return None
-    return max(txt_files, key=lambda p: p.stat().st_mtime)
-
-
-def sample_chunks(input_file: Path, n: int, seed: int | None = None) -> list[str]:
-    """Sample n chunks evenly spaced across the input file."""
-    chunks = load_text_chunks(input_file)
-
-    if seed is not None:
-        random.seed(seed)
-
-    n = min(n, len(chunks))
-
-    if n >= len(chunks):
-        return chunks
-
-    # Evenly space the samples across the dataset
-    # Add small random jitter within each segment to avoid predictable sampling
-    segment_size = len(chunks) / n
-    sampled = []
-    for i in range(n):
-        segment_start = int(i * segment_size)
-        segment_end = int((i + 1) * segment_size)
-        # Pick randomly within this segment
-        idx = random.randint(segment_start, segment_end - 1)
-        sampled.append(chunks[idx])
-
-    return sampled
+EXCLUDE_FILES = {OUTPUT_FILE.name}
 
 
 def main():
@@ -72,7 +35,7 @@ def main():
     if args.input:
         input_file = PROCESSED_DIR / args.input
     else:
-        input_file = get_latest_data_file()
+        input_file = get_latest_preprocessed_file(exclude=EXCLUDE_FILES)
         if not input_file:
             raise FileNotFoundError(f"No data files found in {PROCESSED_DIR}")
 
