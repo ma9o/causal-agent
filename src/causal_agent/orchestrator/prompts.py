@@ -26,22 +26,18 @@ Valid values: "hourly", "daily", "weekly", "monthly", "yearly", or null (time-in
 
 The model operates at the finest endogenous outcome granularity. Specify aggregation functions when raw data is finer than the dimension's timescale.
 
-## Edge Rules (Markov Property)
+## Edge Timing
 
-**Same-timescale edges:**
-- lag=0: Contemporaneous effect within same time index
-- lag=1 unit: Lagged effect from t-1 to t (in hours: daily=24, weekly=168, etc.)
-- Higher-order lags prohibited (Markov property)
+Each edge specifies whether it's **lagged** (cause at t-1 affects effect at t) or **contemporaneous** (cause at t affects effect at t).
 
-**Cross-timescale edges:**
-- lag=0 is PROHIBITED (simultaneous undefined across grains)
-- lag must equal exactly the coarser variable's granularity in hours
-- Coarser→Finer: e.g., weekly stress→daily mood requires lag=168
-- Finer→Coarser: requires aggregation function
+- **lagged=true** (default): Effect depends on cause from previous time period
+- **lagged=false**: Effect depends on cause from same time period (only valid for same-timescale edges)
 
-## Available Aggregations
+Cross-timescale edges are always lagged. The system computes the actual lag in hours automatically.
 
-Aggregation functions collapse finer-grained data to coarser timescales:
+## Aggregations
+
+Required when finer-grained cause affects coarser-grained effect (e.g., hourly→daily).
 
 **Standard statistics:** mean, sum, min, max, std, var, first, last, count
 **Distributional:** median, p10, p25, p75, p90, p99, skew, kurtosis, iqr
@@ -77,7 +73,7 @@ Output valid JSON matching this schema exactly:
     {
       "cause": "string (name of cause variable - must exist in dimensions)",
       "effect": "string (name of effect variable - must exist in dimensions)",
-      "lag": "integer (lag in hours)",
+      "lagged": true | false,
       "aggregation": "<aggregation_name>" | null
     }
   ]
@@ -87,27 +83,17 @@ Output valid JSON matching this schema exactly:
 Field details:
 - dimensions[].name: Must be unique across all dimensions
 - dimensions[].aggregation: How to aggregate raw data to this dimension's granularity (optional)
-- edges[].lag: Integer in hours (see Granularity to Hours below)
-- edges[].aggregation: Required only when cause is finer-grained than effect (use name from Available Aggregations)
+- edges[].lagged: true (default) for t-1→t effects, false for contemporaneous (same time index)
+- edges[].aggregation: Required only when cause is finer-grained than effect
 
 ## Validation Rules
 
 1. Latent validity: is_latent=true requires role="exogenous" AND time_granularity=null
 2. Endogenous requires time-varying: role="endogenous" requires time_granularity != null
 3. No inbound edges to exogenous: exogenous variables cannot appear as "effect"
-4. Contemporaneous same-scale only: lag=0 requires identical time_granularity
-5. Same-scale lag (Markov): same granularity with lag>0 must equal exactly 1 unit in hours
-6. Cross-scale lag (Markov): different granularities require lag=max(cause_gran, effect_gran) in hours
-7. Aggregation required: finer cause → coarser effect requires aggregation
-8. Aggregation prohibited: coarser/equal cause → effect must have aggregation=null
-
-## Granularity to Hours
-
-- hourly = 1
-- daily = 24
-- weekly = 168
-- monthly = 720
-- yearly = 8760
+4. Contemporaneous requires same timescale: lagged=false only valid when cause and effect have same time_granularity
+5. Aggregation required: finer cause → coarser effect requires aggregation
+6. Aggregation prohibited: coarser/equal cause → effect must have aggregation=null
 """
 
 STRUCTURE_PROPOSER_USER = """\

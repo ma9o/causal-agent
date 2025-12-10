@@ -52,10 +52,11 @@ def test_schema_to_networkx():
                 role="endogenous",
             ),
         ],
-        edges=[CausalEdge(cause="X", effect="Y", lag=1)],
+        edges=[CausalEdge(cause="X", effect="Y", lagged=True)],
     )
 
     G = structure.to_networkx()
     assert "X" in G.nodes
     assert "Y" in G.nodes
     assert ("X", "Y") in G.edges
+    assert G.edges["X", "Y"]["lag_hours"] == 1  # hourly lag

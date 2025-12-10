@@ -7,6 +7,7 @@ from causal_agent.orchestrator.schemas import (
     Dimension,
     DSEMStructure,
     GRANULARITY_HOURS,
+    compute_lag_hours,
 )
 
 
@@ -99,18 +100,18 @@ class TestCausalEdge:
     """Tests for CausalEdge."""
 
     def test_contemporaneous_edge(self):
-        """Contemporaneous edge (lag=0) is valid."""
-        edge = CausalEdge(cause="stress", effect="mood", lag=0)
-        assert edge.lag == 0
+        """Contemporaneous edge (lagged=False) is valid."""
+        edge = CausalEdge(cause="stress", effect="mood", lagged=False)
+        assert edge.lagged is False
 
     def test_lagged_edge(self):
-        """Lagged edge is valid."""
-        edge = CausalEdge(cause="sleep", effect="mood", lag=24)
-        assert edge.lag == 24
+        """Lagged edge (default) is valid."""
+        edge = CausalEdge(cause="sleep", effect="mood")
+        assert edge.lagged is True
 
     def test_edge_with_aggregation(self):
         """Edge with aggregation is valid."""
-        edge = CausalEdge(cause="hourly_stress", effect="daily_mood", lag=24, aggregation="mean")
+        edge = CausalEdge(cause="hourly_stress", effect="daily_mood", aggregation="mean")
         assert edge.aggregation == "mean"
 
 
@@ -137,28 +138,29 @@ class TestDSEMStructure:
                 ("stress", "daily", "exogenous"),
                 ("mood", "daily", "endogenous"),
             ),
-            edges=[CausalEdge(cause="stress", effect="mood", lag=0)],
+            edges=[CausalEdge(cause="stress", effect="mood", lagged=False)],
         )
         assert len(structure.dimensions) == 2
         assert len(structure.edges) == 1
+        assert structure.edges[0].lag_hours == 0  # contemporaneous
 
     def test_valid_lagged_edge(self):
-        """Same-timescale lagged edge with 1 unit lag is valid."""
+        """Same-timescale lagged edge computes correct lag_hours."""
         structure = DSEMStructure(
             dimensions=self._make_dims(
                 ("sleep", "daily", "endogenous"),
                 ("mood", "daily", "endogenous"),
             ),
-            edges=[CausalEdge(cause="sleep", effect="mood", lag=24)],  # 1 day = 24h
+            edges=[CausalEdge(cause="sleep", effect="mood", lagged=True)],
         )
-        assert structure.edges[0].lag == 24
+        assert structure.edges[0].lag_hours == 24  # 1 day
 
     def test_invalid_edge_cause_not_in_dimensions(self):
         """Edge cause must exist in dimensions."""
         with pytest.raises(ValueError, match="Edge cause 'unknown' not in dimensions"):
             DSEMStructure(
                 dimensions=self._make_dims(("mood", "daily", "endogenous")),
-                edges=[CausalEdge(cause="unknown", effect="mood", lag=0)],
+                edges=[CausalEdge(cause="unknown", effect="mood")],
             )
 
     def test_invalid_edge_effect_not_in_dimensions(self):
@@ -166,7 +168,7 @@ class TestDSEMStructure:
         with pytest.raises(ValueError, match="Edge effect 'unknown' not in dimensions"):
             DSEMStructure(
                 dimensions=self._make_dims(("stress", "daily", "exogenous")),
-                edges=[CausalEdge(cause="stress", effect="unknown", lag=0)],
+                edges=[CausalEdge(cause="stress", effect="unknown")],
             )
 
     def test_invalid_exogenous_cannot_be_effect(self):
@@ -177,7 +179,7 @@ class TestDSEMStructure:
                     ("mood", "daily", "endogenous"),
                     ("weather", "daily", "exogenous"),
                 ),
-                edges=[CausalEdge(cause="mood", effect="weather", lag=0)],
+                edges=[CausalEdge(cause="mood", effect="weather", lagged=False)],
             )
 
     def test_invalid_contemporaneous_cross_timescale(self):
@@ -188,41 +190,30 @@ class TestDSEMStructure:
                     ("hourly_stress", "hourly", "exogenous"),
                     ("daily_mood", "daily", "endogenous"),
                 ),
-                edges=[CausalEdge(cause="hourly_stress", effect="daily_mood", lag=0)],
-            )
-
-    def test_invalid_same_scale_wrong_lag(self):
-        """Same-timescale edge must have lag=0 or lag=1 unit."""
-        with pytest.raises(ValueError, match="Same-timescale edge must have lag=0 or lag=24h"):
-            DSEMStructure(
-                dimensions=self._make_dims(
-                    ("sleep", "daily", "endogenous"),
-                    ("mood", "daily", "endogenous"),
-                ),
-                edges=[CausalEdge(cause="sleep", effect="mood", lag=48)],  # 2 days, not allowed
-            )
-
-    def test_invalid_cross_scale_wrong_lag(self):
-        """Cross-timescale edge must have lag = coarser granularity."""
-        with pytest.raises(ValueError, match="Cross-timescale edge must have lag=168h"):
-            DSEMStructure(
-                dimensions=self._make_dims(
-                    ("weekly_stress", "weekly", "exogenous"),
-                    ("daily_mood", "daily", "endogenous"),
-                ),
-                edges=[CausalEdge(cause="weekly_stress", effect="daily_mood", lag=24)],  # should be 168
+                edges=[CausalEdge(cause="hourly_stress", effect="daily_mood", lagged=False)],
             )
 
     def test_valid_cross_scale_coarser_to_finer(self):
-        """Coarser cause -> finer effect with correct lag is valid."""
+        """Coarser cause -> finer effect computes correct lag_hours."""
         structure = DSEMStructure(
             dimensions=self._make_dims(
                 ("weekly_stress", "weekly", "exogenous"),
                 ("daily_mood", "daily", "endogenous"),
             ),
-            edges=[CausalEdge(cause="weekly_stress", effect="daily_mood", lag=168)],
+            edges=[CausalEdge(cause="weekly_stress", effect="daily_mood")],  # lagged=True by default
         )
-        assert structure.edges[0].lag == 168
+        assert structure.edges[0].lag_hours == 168  # 1 week (coarser granularity)
+
+    def test_valid_cross_scale_finer_to_coarser(self):
+        """Finer cause -> coarser effect computes correct lag_hours."""
+        structure = DSEMStructure(
+            dimensions=self._make_dims(
+                ("hourly_activity", "hourly", "exogenous"),
+                ("daily_mood", "daily", "endogenous"),
+            ),
+            edges=[CausalEdge(cause="hourly_activity", effect="daily_mood", aggregation="mean")],
+        )
+        assert structure.edges[0].lag_hours == 24  # 1 day (coarser granularity)
 
     def test_invalid_finer_to_coarser_needs_aggregation(self):
         """Finer cause -> coarser effect requires aggregation."""
@@ -232,7 +223,7 @@ class TestDSEMStructure:
                     ("hourly_activity", "hourly", "exogenous"),
                     ("daily_mood", "daily", "endogenous"),
                 ),
-                edges=[CausalEdge(cause="hourly_activity", effect="daily_mood", lag=24)],
+                edges=[CausalEdge(cause="hourly_activity", effect="daily_mood")],
             )
 
     def test_valid_finer_to_coarser_with_aggregation(self):
@@ -242,9 +233,10 @@ class TestDSEMStructure:
                 ("hourly_activity", "hourly", "exogenous"),
                 ("daily_mood", "daily", "endogenous"),
             ),
-            edges=[CausalEdge(cause="hourly_activity", effect="daily_mood", lag=24, aggregation="mean")],
+            edges=[CausalEdge(cause="hourly_activity", effect="daily_mood", aggregation="mean")],
         )
         assert structure.edges[0].aggregation == "mean"
+        assert structure.edges[0].lag_hours == 24
 
     def test_invalid_coarser_to_finer_no_aggregation_allowed(self):
         """Coarser cause -> finer effect must not have aggregation."""
@@ -254,22 +246,23 @@ class TestDSEMStructure:
                     ("weekly_stress", "weekly", "exogenous"),
                     ("daily_mood", "daily", "endogenous"),
                 ),
-                edges=[CausalEdge(cause="weekly_stress", effect="daily_mood", lag=168, aggregation="mean")],
+                edges=[CausalEdge(cause="weekly_stress", effect="daily_mood", aggregation="mean")],
             )
 
     def test_to_networkx(self):
-        """Structure converts to NetworkX graph."""
+        """Structure converts to NetworkX graph with computed lag_hours."""
         structure = DSEMStructure(
             dimensions=self._make_dims(
                 ("stress", "daily", "exogenous"),
                 ("mood", "daily", "endogenous"),
             ),
-            edges=[CausalEdge(cause="stress", effect="mood", lag=0)],
+            edges=[CausalEdge(cause="stress", effect="mood", lagged=False)],
         )
         G = structure.to_networkx()
         assert "stress" in G.nodes
         assert "mood" in G.nodes
         assert ("stress", "mood") in G.edges
+        assert G.edges["stress", "mood"]["lag_hours"] == 0
 
 
 class TestGranularityHours:
@@ -282,3 +275,29 @@ class TestGranularityHours:
         assert GRANULARITY_HOURS["weekly"] == 168
         assert GRANULARITY_HOURS["monthly"] == 720
         assert GRANULARITY_HOURS["yearly"] == 8760
+
+
+class TestComputeLagHours:
+    """Tests for compute_lag_hours function."""
+
+    def test_same_timescale_contemporaneous(self):
+        """Same timescale with lagged=False returns 0."""
+        assert compute_lag_hours("daily", "daily", lagged=False) == 0
+        assert compute_lag_hours("hourly", "hourly", lagged=False) == 0
+
+    def test_same_timescale_lagged(self):
+        """Same timescale with lagged=True returns 1 unit."""
+        assert compute_lag_hours("daily", "daily", lagged=True) == 24
+        assert compute_lag_hours("hourly", "hourly", lagged=True) == 1
+        assert compute_lag_hours("weekly", "weekly", lagged=True) == 168
+
+    def test_cross_timescale_coarser_to_finer(self):
+        """Cross-timescale returns coarser granularity regardless of lagged flag."""
+        assert compute_lag_hours("weekly", "daily", lagged=True) == 168
+        assert compute_lag_hours("weekly", "daily", lagged=False) == 168  # cross-scale always uses max
+        assert compute_lag_hours("daily", "hourly", lagged=True) == 24
+
+    def test_cross_timescale_finer_to_coarser(self):
+        """Finer to coarser also returns coarser granularity."""
+        assert compute_lag_hours("hourly", "daily", lagged=True) == 24
+        assert compute_lag_hours("daily", "weekly", lagged=True) == 168
