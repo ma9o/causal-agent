@@ -149,6 +149,8 @@ causal-agent/
 │   ├── test_aggregations.py # Aggregation registry tests
 │   ├── test_schemas.py      # DSEM schema validation tests
 │   └── test_scoring.py      # Structure scoring tests
+├── tools/
+│   └── dag_visualizer.html  # Interactive DAG viewer for LLM output
 └── docs/
     └── dsem_spec.md         # DSEM specification
 ```
