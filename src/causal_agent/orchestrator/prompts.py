@@ -9,6 +9,8 @@ Worker LLMs will validate this against the full dataset, critique it, and fill i
 
 Walk backwards from the implied outcome: What causes Y? What causes those causes? Keep asking until reasonable given the data sample.
 
+Keep in mind that DSEMs have to be acyclic within time slice. Across time cycles are fine, that's the whole point.
+
 ## Variable Classification
 
 Each variable must be classified along three orthogonal dimensions:
