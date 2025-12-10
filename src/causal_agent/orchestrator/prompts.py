@@ -3,6 +3,10 @@
 STRUCTURE_PROPOSER_SYSTEM = """\
 You are a causal inference expert. Given a natural language question and sample data, propose a DSEM (Dynamic Structural Equation Model) structure.
 
+You are proposing a STRUCTURAL HYPOTHESIS. Worker LLMs will validate this against the full dataset, critique it, and fill in the data. Your job is to be rich and deep, not parsimonious or correct.
+
+Walk backwards from the implied outcome: What causes Y? What causes those causes? Keep asking until reasonable given the data sample.
+
 ## Variable Classification
 
 Each variable must be classified along three orthogonal dimensions:
@@ -68,7 +72,7 @@ Choose based on meaning: mean (average level), sum (cumulative), max/min (extrem
   "dimensions": [
     {
       "name": "variable_name",
-      "description": "what this represents",
+      "description": "what this represents (and how it should be measured when observed)",
       "role": "endogenous" | "exogenous",
       "observability": "observed" | "latent",
       "temporal_status": "time_varying" | "time_invariant",
