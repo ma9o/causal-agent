@@ -12,12 +12,16 @@ import argparse
 import asyncio
 import json
 import re
+import signal
 import sys
 import time
 import webbrowser
 from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import quote
+
+# Track running processes for cleanup on interrupt
+_running_procs: list[asyncio.subprocess.Process] = []
 
 # Import model registry from main eval module (single source of truth)
 sys.path.insert(0, str(__import__("pathlib").Path(__file__).parent.parent))
@@ -137,8 +141,13 @@ async def run_eval(
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.STDOUT,
     )
+    _running_procs.append(proc)
 
-    stdout, _ = await proc.communicate()
+    try:
+        stdout, _ = await proc.communicate()
+    finally:
+        if proc in _running_procs:
+            _running_procs.remove(proc)
     duration = time.time() - start
     output = stdout.decode()
 
@@ -212,7 +221,29 @@ def open_visualizer(structure_json: str, model_name: str) -> None:
     webbrowser.open(url)
 
 
+def cleanup_subprocesses():
+    """Kill all running subprocess evals."""
+    for proc in _running_procs:
+        if proc.returncode is None:  # Still running
+            print(f"\nKilling subprocess {proc.pid}...", file=sys.stderr)
+            proc.terminate()
+    # Give them a moment to terminate gracefully
+    time.sleep(0.5)
+    for proc in _running_procs:
+        if proc.returncode is None:
+            proc.kill()
+
+
 def main():
+    # Set up signal handler to kill subprocesses on Ctrl+C
+    def signal_handler(sig, frame):
+        print("\nInterrupted! Cleaning up...", file=sys.stderr)
+        cleanup_subprocesses()
+        sys.exit(130)  # 128 + SIGINT
+
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+
     parser = argparse.ArgumentParser(description="Run orchestrator evals in parallel")
     parser.add_argument(
         "--models",
