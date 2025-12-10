@@ -157,6 +157,7 @@
     .tag.exogenous { background: #da3633aa; color: #ff7b72; }
     .tag.observed { background: #238636aa; color: #3fb950; }
     .tag.latent { background: #6e768133; color: #8b949e; }
+    .tag.outcome { background: #8957e5aa; color: #d2a8ff; }
     .close-btn {
       position: absolute;
       top: 12px;
@@ -185,6 +186,10 @@
 
     <div class="legend">
       <h3>Nodes</h3>
+      <div class="legend-item">
+        <div class="legend-color" style="background: #a371f7;"></div>
+        <span>outcome (Y)</span>
+      </div>
       <div class="legend-item">
         <div class="legend-color" style="background: #58a6ff;"></div>
         <span>endogenous</span>
@@ -237,6 +242,7 @@
     const COLORS = {
       endogenous: '#58a6ff',
       exogenous: '#f78166',
+      outcome: '#a371f7',
       edgeDefault: '#8b949e',
       edgeIncoming: '#3fb950',
       edgeOutgoing: '#f78166',
@@ -315,24 +321,27 @@
       }
 
       // Build nodes
-      const nodes = data.dimensions.map(dim => ({
-        id: dim.name,
-        label: dim.name + (dim.causal_granularity ? `\n(${dim.causal_granularity})` : ''),
-        color: {
-          background: dim.role === 'exogenous' ? COLORS.exogenous : COLORS.endogenous,
-          border: dim.observability === 'latent' ? '#6e7681' : COLORS.nodeBorder,
-          highlight: {
-            background: dim.role === 'exogenous' ? COLORS.exogenous : COLORS.endogenous,
-            border: COLORS.nodeHighlight
-          }
-        },
-        borderWidth: dim.observability === 'latent' ? 2 : 1,
-        shapeProperties: {
-          borderDashes: dim.observability === 'latent' ? [4, 4] : false
-        },
-        font: { color: '#fff', size: 12, face: 'Inter, sans-serif' },
-        _data: dim
-      }));
+      const nodes = data.dimensions.map(dim => {
+        // Outcome takes priority, then role
+        let bgColor = dim.role === 'exogenous' ? COLORS.exogenous : COLORS.endogenous;
+        if (dim.is_outcome) bgColor = COLORS.outcome;
+
+        return {
+          id: dim.name,
+          label: dim.name + (dim.causal_granularity ? `\n(${dim.causal_granularity})` : ''),
+          color: {
+            background: bgColor,
+            border: dim.observability === 'latent' ? '#6e7681' : COLORS.nodeBorder,
+            highlight: { background: bgColor, border: COLORS.nodeHighlight }
+          },
+          borderWidth: dim.observability === 'latent' ? 2 : 1,
+          shapeProperties: {
+            borderDashes: dim.observability === 'latent' ? [4, 4] : false
+          },
+          font: { color: '#fff', size: 12, face: 'Inter, sans-serif' },
+          _data: dim
+        };
+      });
 
       // Build edges
       const edges = data.edges.map((edge, i) => {
@@ -436,6 +445,9 @@
           <span class="label">Description</span>
           <span class="value">${dim.description}</span>
         </div>
+        ${dim.is_outcome ? `<div class="info-field">
+          <span class="tag outcome">OUTCOME (Y)</span>
+        </div>` : ''}
         <div class="info-field">
           <span class="label">Role</span>
           <span class="tag ${dim.role}">${dim.role}</span>

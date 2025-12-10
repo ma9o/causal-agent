@@ -19,6 +19,9 @@ Each variable must be classified along three orthogonal dimensions:
 | **endogenous** | What we're modeling - has causes | Can be an effect in edges |
 | **exogenous** | Given/external - no causes modeled | Cannot be an effect (only a cause) |
 
+### Outcome Variable
+Set `is_outcome: true` for the primary outcome variable Y implied by the question. Exactly one variable should be marked as the outcome. Only endogenous variables can be outcomes.
+
 ### 2. Observability
 | Value | Description | Example |
 |-------|-------------|---------|
@@ -76,6 +79,7 @@ Choose based on meaning: mean (average level), sum (cumulative), max/min (extrem
       "name": "variable_name",
       "description": "what this represents (and how it should be measured when observed)",
       "role": "endogenous" | "exogenous",
+      "is_outcome": true | false,
       "observability": "observed" | "latent",
       "temporal_status": "time_varying" | "time_invariant",
       "causal_granularity": "hourly" | "daily" | "weekly" | "monthly" | "yearly" | null,
@@ -99,6 +103,8 @@ Choose based on meaning: mean (average level), sum (cumulative), max/min (extrem
 1. **time_varying** requires causal_granularity and aggregation; **time_invariant** must have both null
 2. Only **endogenous** variables can appear as edge effects (exogenous cannot be effects)
 3. **lagged=false** only valid when cause and effect have same causal_granularity
+4. Exactly one variable must have **is_outcome=true** (the Y implied by the question)
+5. Only **endogenous** variables can be outcomes
 """
 
 STRUCTURE_PROPOSER_USER = """\

@@ -42,6 +42,10 @@ class Dimension(BaseModel):
     name: str = Field(description="Variable name (e.g., 'sleep_quality')")
     description: str = Field(description="What this variable represents")
     role: Role = Field(description="'endogenous' (modeled) or 'exogenous' (given)")
+    is_outcome: bool = Field(
+        default=False,
+        description="True if this is the primary outcome variable Y implied by the question",
+    )
     observability: Observability = Field(description="'observed' (measured) or 'latent' (inferred)")
     temporal_status: TemporalStatus = Field(
         description="'time_varying' (changes over time) or 'time_invariant' (fixed)"
@@ -92,6 +96,12 @@ class Dimension(BaseModel):
                 raise ValueError(
                     f"Time-invariant variable '{self.name}' must not have aggregation"
                 )
+
+        # Outcomes must be endogenous
+        if self.is_outcome and self.role != Role.ENDOGENOUS:
+            raise ValueError(
+                f"Outcome variable '{self.name}' must be endogenous, got {self.role.value}"
+            )
 
         return self
 
@@ -151,6 +161,14 @@ class DSEMStructure(BaseModel):
     @model_validator(mode="after")
     def validate_and_compute_lags(self):
         """Validate structure and compute lag_hours for each edge."""
+        # Exactly one outcome required
+        outcomes = [d for d in self.dimensions if d.is_outcome]
+        if len(outcomes) == 0:
+            raise ValueError("Exactly one dimension must have is_outcome=true")
+        if len(outcomes) > 1:
+            names = [d.name for d in outcomes]
+            raise ValueError(f"Only one outcome allowed, got {len(outcomes)}: {names}")
+
         dim_map = {d.name: d for d in self.dimensions}
 
         for edge in self.edges:

@@ -150,7 +150,7 @@ class TestCausalEdge:
 class TestDSEMStructure:
     """Tests for DSEMStructure validation."""
 
-    def _make_dim(self, name, granularity, role, observability=Observability.OBSERVED, temporal_status=None):
+    def _make_dim(self, name, granularity, role, observability=Observability.OBSERVED, temporal_status=None, is_outcome=False):
         """Helper to create a dimension.
 
         If temporal_status is None, infers from granularity presence.
@@ -162,6 +162,7 @@ class TestDSEMStructure:
             name=name,
             description=f"{name} description",
             role=role,
+            is_outcome=is_outcome,
             observability=observability,
             temporal_status=temporal_status,
             causal_granularity=granularity,
@@ -174,7 +175,7 @@ class TestDSEMStructure:
         structure = DSEMStructure(
             dimensions=[
                 self._make_dim("stress", "daily", Role.EXOGENOUS),
-                self._make_dim("mood", "daily", Role.ENDOGENOUS),
+                self._make_dim("mood", "daily", Role.ENDOGENOUS, is_outcome=True),
             ],
             edges=[CausalEdge(cause="stress", effect="mood", description="Stress affects mood", lagged=False)],
         )
@@ -187,7 +188,7 @@ class TestDSEMStructure:
         structure = DSEMStructure(
             dimensions=[
                 self._make_dim("sleep", "daily", Role.ENDOGENOUS),
-                self._make_dim("mood", "daily", Role.ENDOGENOUS),
+                self._make_dim("mood", "daily", Role.ENDOGENOUS, is_outcome=True),
             ],
             edges=[CausalEdge(cause="sleep", effect="mood", description="Sleep affects mood", lagged=True)],
         )
@@ -197,7 +198,7 @@ class TestDSEMStructure:
         """Edge cause must exist in dimensions."""
         with pytest.raises(ValueError, match="Edge cause 'unknown' not in dimensions"):
             DSEMStructure(
-                dimensions=[self._make_dim("mood", "daily", Role.ENDOGENOUS)],
+                dimensions=[self._make_dim("mood", "daily", Role.ENDOGENOUS, is_outcome=True)],
                 edges=[CausalEdge(cause="unknown", effect="mood", description="Test edge")],
             )
 
@@ -205,7 +206,10 @@ class TestDSEMStructure:
         """Edge effect must exist in dimensions."""
         with pytest.raises(ValueError, match="Edge effect 'unknown' not in dimensions"):
             DSEMStructure(
-                dimensions=[self._make_dim("stress", "daily", Role.EXOGENOUS)],
+                dimensions=[
+                    self._make_dim("stress", "daily", Role.EXOGENOUS),
+                    self._make_dim("mood", "daily", Role.ENDOGENOUS, is_outcome=True),
+                ],
                 edges=[CausalEdge(cause="stress", effect="unknown", description="Test edge")],
             )
 
@@ -214,7 +218,7 @@ class TestDSEMStructure:
         with pytest.raises(ValueError, match="Exogenous variable 'weather' cannot be an effect"):
             DSEMStructure(
                 dimensions=[
-                    self._make_dim("mood", "daily", Role.ENDOGENOUS),
+                    self._make_dim("mood", "daily", Role.ENDOGENOUS, is_outcome=True),
                     self._make_dim("weather", "daily", Role.EXOGENOUS),
                 ],
                 edges=[CausalEdge(cause="mood", effect="weather", description="Invalid edge", lagged=False)],
@@ -226,7 +230,7 @@ class TestDSEMStructure:
             DSEMStructure(
                 dimensions=[
                     self._make_dim("hourly_stress", "hourly", Role.EXOGENOUS),
-                    self._make_dim("daily_mood", "daily", Role.ENDOGENOUS),
+                    self._make_dim("daily_mood", "daily", Role.ENDOGENOUS, is_outcome=True),
                 ],
                 edges=[CausalEdge(cause="hourly_stress", effect="daily_mood", description="Invalid cross-timescale", lagged=False)],
             )
@@ -236,7 +240,7 @@ class TestDSEMStructure:
         structure = DSEMStructure(
             dimensions=[
                 self._make_dim("weekly_stress", "weekly", Role.EXOGENOUS),
-                self._make_dim("daily_mood", "daily", Role.ENDOGENOUS),
+                self._make_dim("daily_mood", "daily", Role.ENDOGENOUS, is_outcome=True),
             ],
             edges=[CausalEdge(cause="weekly_stress", effect="daily_mood", description="Weekly stress affects daily mood")],  # lagged=True by default
         )
@@ -247,7 +251,7 @@ class TestDSEMStructure:
         structure = DSEMStructure(
             dimensions=[
                 self._make_dim("hourly_activity", "hourly", Role.EXOGENOUS),
-                self._make_dim("daily_mood", "daily", Role.ENDOGENOUS),
+                self._make_dim("daily_mood", "daily", Role.ENDOGENOUS, is_outcome=True),
             ],
             edges=[CausalEdge(cause="hourly_activity", effect="daily_mood", description="Activity affects mood")],
         )
@@ -258,7 +262,7 @@ class TestDSEMStructure:
         structure = DSEMStructure(
             dimensions=[
                 self._make_dim("stress", "daily", Role.EXOGENOUS),
-                self._make_dim("mood", "daily", Role.ENDOGENOUS),
+                self._make_dim("mood", "daily", Role.ENDOGENOUS, is_outcome=True),
             ],
             edges=[CausalEdge(cause="stress", effect="mood", description="Stress affects mood", lagged=False)],
         )
@@ -267,6 +271,43 @@ class TestDSEMStructure:
         assert "mood" in G.nodes
         assert ("stress", "mood") in G.edges
         assert G.edges["stress", "mood"]["lag_hours"] == 0
+
+    def test_invalid_no_outcome(self):
+        """Structure must have exactly one outcome."""
+        with pytest.raises(ValueError, match="Exactly one dimension must have is_outcome=true"):
+            DSEMStructure(
+                dimensions=[
+                    self._make_dim("stress", "daily", Role.EXOGENOUS),
+                    self._make_dim("mood", "daily", Role.ENDOGENOUS),
+                ],
+                edges=[CausalEdge(cause="stress", effect="mood", description="Test")],
+            )
+
+    def test_invalid_multiple_outcomes(self):
+        """Structure must have exactly one outcome."""
+        with pytest.raises(ValueError, match="Only one outcome allowed"):
+            DSEMStructure(
+                dimensions=[
+                    self._make_dim("stress", "daily", Role.ENDOGENOUS, is_outcome=True),
+                    self._make_dim("mood", "daily", Role.ENDOGENOUS, is_outcome=True),
+                ],
+                edges=[CausalEdge(cause="stress", effect="mood", description="Test")],
+            )
+
+    def test_invalid_exogenous_outcome(self):
+        """Outcome must be endogenous."""
+        with pytest.raises(ValueError, match="Outcome variable .* must be endogenous"):
+            Dimension(
+                name="weather",
+                description="Weather",
+                role=Role.EXOGENOUS,
+                is_outcome=True,
+                observability=Observability.OBSERVED,
+                temporal_status=TemporalStatus.TIME_VARYING,
+                causal_granularity="daily",
+                base_dtype="continuous",
+                aggregation="mean",
+            )
 
 
 class TestGranularityHours:

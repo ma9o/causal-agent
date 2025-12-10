@@ -51,6 +51,7 @@ def test_schema_to_networkx():
                 name="Y",
                 description="effect variable",
                 role=Role.ENDOGENOUS,
+                is_outcome=True,
                 observability=Observability.OBSERVED,
                 temporal_status=TemporalStatus.TIME_VARYING,
                 causal_granularity="hourly",
