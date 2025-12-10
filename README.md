@@ -95,6 +95,14 @@ uv run inspect eval src/causal_agent/orchestrator/eval.py \
 uv run inspect eval src/causal_agent/orchestrator/eval.py \
     --model openrouter/openai/gpt-5.1
 
+# Run with DeepSeek V3.2
+uv run inspect eval src/causal_agent/orchestrator/eval.py \
+    --model openrouter/deepseek/deepseek-v3.2
+
+# Run with Kimi K2
+uv run inspect eval src/causal_agent/orchestrator/eval.py \
+    --model openrouter/moonshotai/kimi-k2
+
 # Customize eval parameters
 uv run inspect eval src/causal_agent/orchestrator/eval.py \
     --model openrouter/anthropic/claude-opus-4.5 \

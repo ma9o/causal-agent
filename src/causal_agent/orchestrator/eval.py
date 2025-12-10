@@ -7,6 +7,8 @@ Usage:
     inspect eval src/causal_agent/orchestrator/eval.py --model openrouter/anthropic/claude-opus-4.5
     inspect eval src/causal_agent/orchestrator/eval.py --model openrouter/google/gemini-3-pro-preview-20251117
     inspect eval src/causal_agent/orchestrator/eval.py --model openrouter/openai/gpt-5.1
+    inspect eval src/causal_agent/orchestrator/eval.py --model openrouter/deepseek/deepseek-v3.2
+    inspect eval src/causal_agent/orchestrator/eval.py --model openrouter/moonshotai/kimi-k2
 """
 
 import json
@@ -38,6 +40,8 @@ DEFAULT_MODELS = [
     "openrouter/anthropic/claude-opus-4.5",
     "openrouter/google/gemini-3-pro-preview-20251117",
     "openrouter/openai/gpt-5.1",
+    "openrouter/deepseek/deepseek-v3.2",
+    "openrouter/moonshotai/kimi-k2",
 ]
 
 
