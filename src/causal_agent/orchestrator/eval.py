@@ -247,7 +247,10 @@ def orchestrator_eval(
         dataset=create_eval_dataset(n_chunks=n_chunks, seed=seed, input_file=input_file),
         solver=[
             system_message(STRUCTURE_PROPOSER_SYSTEM),
-            generate(),
+            generate(
+                max_tokens=16384,
+                reasoning_effort="high",
+            ),
         ],
         scorer=dsem_structure_scorer(),
     )
