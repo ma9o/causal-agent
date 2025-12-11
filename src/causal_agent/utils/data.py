@@ -1,7 +1,8 @@
-import os
 from pathlib import Path
 
 from dotenv import load_dotenv
+
+from causal_agent.utils.config import get_config
 
 load_dotenv(Path(__file__).parent.parent.parent.parent / ".env")
 
@@ -14,8 +15,21 @@ TRAINING_DIR = DATA_DIR / "training"
 # Backwards compatibility alias
 PREPROCESSED_DIR = PROCESSED_DIR
 
-CHUNK_SIZE = int(os.environ.get("CHUNK_SIZE", 50))
-SAMPLE_CHUNKS = int(os.environ.get("SAMPLE_CHUNKS", 10))
+
+def get_chunk_size() -> int:
+    """Get chunk size from config."""
+    return get_config().data.chunk_size
+
+
+def get_sample_chunks() -> int:
+    """Get sample chunks from config."""
+    return get_config().data.sample_chunks
+
+
+# Backwards compatibility - evaluated at import time
+# Use get_chunk_size() / get_sample_chunks() for dynamic access
+CHUNK_SIZE = get_chunk_size()
+SAMPLE_CHUNKS = get_sample_chunks()
 
 
 def load_lines(path: Path) -> list[str]:
