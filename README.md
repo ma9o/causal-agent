@@ -176,6 +176,7 @@ causal-agent/
 │   │   └── pipeline.py
 │   └── utils/
 │       ├── aggregations.py # Polars aggregation registry
+│       ├── config.py       # YAML config loader
 │       └── data.py         # Data loading utilities
 ├── tests/
 │   ├── test_aggregations.py # Aggregation registry tests
@@ -183,8 +184,9 @@ causal-agent/
 │   └── test_scoring.py      # Structure scoring tests
 ├── tools/
 │   └── dag_visualizer.html  # Interactive DAG viewer for LLM output
-└── docs/
-    └── dsem_spec.md         # DSEM specification
+├── docs/
+│   └── dsem_spec.md         # DSEM specification
+└── config.yaml              # Pipeline configuration (models, params)
 ```
 
 ## Implementation Notes
