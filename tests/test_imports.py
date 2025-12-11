@@ -25,7 +25,7 @@ def test_import_utils():
 
 
 def test_preprocessing_script():
-    from scripts.preprocess_google_takeout import (
+    from evals.scripts.preprocess_google_takeout import (
         parse_takeout_zip,
         export_as_text_chunks,
     )
