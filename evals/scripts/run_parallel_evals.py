@@ -26,10 +26,23 @@ from pathlib import Path
 # Track running processes for cleanup on interrupt
 _running_procs: list[asyncio.subprocess.Process] = []
 
-# Import model registries from eval modules
-sys.path.insert(0, str(Path(__file__).parent.parent))
-from orchestrator_structure import MODELS as ORCHESTRATOR_MODELS
-from worker_extraction import MODELS as WORKER_MODELS
+# Worker models for parallel execution (via OpenRouter)
+WORKER_MODELS = {
+    "openrouter/moonshotai/kimi-k2-thinking": "kimi-k2",
+    "openrouter/deepseek/deepseek-v3.2-exp": "deepseek",
+    "openrouter/google/gemini-2.5-flash": "gemini-flash",
+    "openrouter/x-ai/grok-4.1-fast": "grok-fast",
+    "openrouter/anthropic/claude-4.5-haiku-20251001": "haiku",
+}
+
+# Top-tier models for orchestrator eval (via OpenRouter)
+ORCHESTRATOR_MODELS = {
+    "openrouter/anthropic/claude-opus-4.5": "claude",
+    "openrouter/google/gemini-3-pro-preview-20251117": "gemini",
+    "openrouter/openai/gpt-5.1": "gpt",
+    "openrouter/deepseek/deepseek-v3.2": "deepseek",
+    "openrouter/moonshotai/kimi-k2": "kimi",
+}
 
 # Eval configurations
 EVAL_CONFIGS = {
