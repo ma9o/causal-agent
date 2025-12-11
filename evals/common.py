@@ -6,8 +6,8 @@ import re
 from inspect_ai.model import GenerateConfig, get_model
 from inspect_ai.solver import Generate, TaskState, generate, solver
 
-from causal_agent.orchestrator.agents import multi_turn_generate
 from causal_agent.orchestrator.prompts import STRUCTURE_REVIEW_REQUEST
+from causal_agent.utils.llm import multi_turn_generate
 from causal_agent.utils.data import (
     PROCESSED_DIR,
     get_latest_preprocessed_file,

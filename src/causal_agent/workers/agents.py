@@ -1,7 +1,6 @@
 """Worker agents using Inspect AI with OpenRouter."""
 
 import asyncio
-import json
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -14,6 +13,7 @@ from inspect_ai.model import (
 )
 
 from causal_agent.utils.config import get_config
+from causal_agent.utils.llm import multi_turn_generate, parse_json_response
 from .prompts import WORKER_SYSTEM, WORKER_USER
 from .schemas import WorkerOutput
 
@@ -114,25 +114,9 @@ async def process_chunk_async(
         ),
     ]
 
-    response = await model.generate(messages)
-    content = response.completion
-
-    # Parse and validate the response
-    # Handle markdown code blocks if present
-    if "```json" in content:
-        content = content.split("```json")[1].split("```")[0]
-    elif "```" in content:
-        content = content.split("```")[1].split("```")[0]
-
-    content = content.strip()
-
-    try:
-        data = json.loads(content)
-    except json.JSONDecodeError as e:
-        print(f"JSON parsing error: {e}")
-        print(f"Content length: {len(content)}")
-        print(f"Content preview: {content[:500]}...")
-        raise ValueError(f"Failed to parse worker response as JSON: {e}") from e
+    # Single-turn generation (no follow-ups for workers)
+    completion = await multi_turn_generate(messages=messages, model=model)
+    data = parse_json_response(completion)
 
     output = WorkerOutput.model_validate(data)
     dataframe = output.to_dataframe()
