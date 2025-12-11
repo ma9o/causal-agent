@@ -47,6 +47,13 @@ class Dimension(BaseModel):
         description="True if this is the primary outcome variable Y implied by the question",
     )
     observability: Observability = Field(description="'observed' (measured) or 'latent' (inferred)")
+    how_to_measure: str | None = Field(
+        default=None,
+        description=(
+            "Instructions for workers on how to extract this variable from data. "
+            "Required for observed variables, must be null for latent variables."
+        ),
+    )
     temporal_status: TemporalStatus = Field(
         description="'time_varying' (changes over time) or 'time_invariant' (fixed)"
     )
@@ -101,6 +108,17 @@ class Dimension(BaseModel):
         if self.is_outcome and self.role != Role.ENDOGENOUS:
             raise ValueError(
                 f"Outcome variable '{self.name}' must be endogenous, got {self.role.value}"
+            )
+
+        # how_to_measure required for observed, must be null for latent
+        is_observed = self.observability == Observability.OBSERVED
+        if is_observed and not self.how_to_measure:
+            raise ValueError(
+                f"Observed variable '{self.name}' requires how_to_measure instructions"
+            )
+        if not is_observed and self.how_to_measure:
+            raise ValueError(
+                f"Latent variable '{self.name}' must not have how_to_measure (it's not directly measurable)"
             )
 
         return self

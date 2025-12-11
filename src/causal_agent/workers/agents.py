@@ -34,6 +34,8 @@ def _format_dimensions(schema: dict) -> str:
 
     Only includes observed dimensions - latent variables are excluded
     since workers shouldn't try to measure them directly.
+
+    Shows: name, how_to_measure, dtype, role, temporal_status, causal_granularity
     """
     dimensions = schema.get("dimensions", [])
     lines = []
@@ -42,9 +44,19 @@ def _format_dimensions(schema: dict) -> str:
         if dim.get("observability") == "latent":
             continue
         name = dim.get("name", "unknown")
-        desc = dim.get("description", "")
+        how_to_measure = dim.get("how_to_measure", "")
         dtype = dim.get("base_dtype", "")
-        lines.append(f"- {name}: {desc} ({dtype})")
+        role = dim.get("role", "")
+        temporal = dim.get("temporal_status", "")
+        granularity = dim.get("causal_granularity", "")
+
+        # Build info string
+        info_parts = [dtype, role, temporal]
+        if granularity:
+            info_parts.append(granularity)
+        info = ", ".join(info_parts)
+
+        lines.append(f"- {name}: {how_to_measure} ({info})")
     return "\n".join(lines)
 
 

@@ -79,10 +79,11 @@ Choose based on meaning: mean (average level), sum (cumulative), max/min (extrem
   "dimensions": [
     {
       "name": "variable_name",
-      "description": "what this represents (and how it should be measured when observed)",
+      "description": "what this variable represents",
       "role": "endogenous" | "exogenous",
       "is_outcome": true | false,
       "observability": "observed" | "latent",
+      "how_to_measure": "instructions for extracting this from data" | null,
       "temporal_status": "time_varying" | "time_invariant",
       "causal_granularity": "hourly" | "daily" | "weekly" | "monthly" | "yearly" | null,
       "base_dtype": "continuous" | "binary" | "count" | "ordinal" | "categorical",
@@ -107,6 +108,7 @@ Choose based on meaning: mean (average level), sum (cumulative), max/min (extrem
 3. **lagged=false** only valid when cause and effect have same causal_granularity
 4. Exactly one variable must have **is_outcome=true** (the Y implied by the question)
 5. Only **endogenous** variables can be outcomes
+6. **observed** variables require how_to_measure; **latent** variables must have how_to_measure=null
 """
 
 STRUCTURE_PROPOSER_USER = """\
