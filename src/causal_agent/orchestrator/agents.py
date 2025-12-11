@@ -73,10 +73,6 @@ async def run_two_stage_proposal(
     """
     # Stage 1: Initial proposal
     proposal_response = await model.generate(messages, config=config)
-    proposal_data = _parse_json_response(proposal_response.completion)
-
-    # Validate initial proposal (fail fast if invalid)
-    DSEMStructure.model_validate(proposal_data)
 
     # Append assistant response to conversation history
     messages = list(messages)  # Don't mutate original
