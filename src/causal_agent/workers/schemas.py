@@ -8,7 +8,9 @@ class Extraction(BaseModel):
     """A single extracted observation for a dimension."""
 
     dimension: str = Field(description="Name of the dimension")
-    value: str = Field(description="Extracted value/observation")
+    value: int | float | bool | str | None = Field(
+        description="Extracted value of the correct datatype"
+    )
     timestamp: str | None = Field(
         default=None,
         description="ISO timestamp if identifiable",
@@ -41,10 +43,11 @@ class WorkerOutput(BaseModel):
 
         Returns:
             DataFrame with columns: dimension, value, timestamp
+            Value column uses pl.Object to preserve mixed types.
         """
         if not self.extractions:
             return pl.DataFrame(
-                schema={"dimension": pl.Utf8, "value": pl.Utf8, "timestamp": pl.Utf8}
+                schema={"dimension": pl.Utf8, "value": pl.Object, "timestamp": pl.Utf8}
             )
 
         return pl.DataFrame(
@@ -55,5 +58,6 @@ class WorkerOutput(BaseModel):
                     "timestamp": e.timestamp,
                 }
                 for e in self.extractions
-            ]
+            ],
+            schema={"dimension": pl.Utf8, "value": pl.Object, "timestamp": pl.Utf8},
         )

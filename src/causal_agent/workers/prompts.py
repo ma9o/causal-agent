@@ -18,7 +18,11 @@ Be conservative—the orchestrator saw a sample and proposed the schema for good
 ```json
 {
   "extractions": [
-    {"dimension": "name", "value": "...", "timestamp": "ISO or null"}
+    {
+      "dimension": "name", 
+      "value": < value of the correct dataype >, 
+      "timestamp": "ISO or null"
+    }
   ],
   "proposed_dimensions": [
     {
