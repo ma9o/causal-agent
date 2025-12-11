@@ -12,7 +12,6 @@ Usage:
 """
 
 import json
-import re
 from dataclasses import dataclass
 
 from inspect_ai import Task, task
@@ -26,14 +25,9 @@ from causal_agent.orchestrator.prompts import (
 )
 from causal_agent.orchestrator.scoring import _count_rule_points_detailed
 from causal_agent.orchestrator.schemas import DSEMStructure
-from causal_agent.utils.data import (
-    PROCESSED_DIR,
-    get_latest_preprocessed_file,
-    sample_chunks,
-)
+from causal_agent.utils.data import PROCESSED_DIR
 
-# Files to exclude when finding the latest data file (script outputs)
-EXCLUDE_FILES = {"orchestrator-samples-manual.txt"}
+from .common import extract_json_from_response, format_chunks, get_sample_chunks
 
 # Top-tier models for orchestrator eval (via OpenRouter)
 # Model ID -> short alias for CLI convenience
@@ -76,14 +70,6 @@ def load_eval_questions() -> list[EvalQuestion]:
     ]
 
 
-def format_chunks(chunks: list[str]) -> str:
-    """Format chunks for the prompt."""
-    parts = []
-    for i, chunk in enumerate(chunks):
-        parts.append(f"--- CHUNK {i + 1} ---\n{chunk}")
-    return "\n\n".join(parts)
-
-
 def create_eval_dataset(
     n_chunks: int = 5,
     seed: int = 42,
@@ -101,18 +87,8 @@ def create_eval_dataset(
     """
     questions = load_eval_questions()
 
-    # Resolve input file
-    if input_file:
-        data_file = PROCESSED_DIR / input_file
-        if not data_file.exists():
-            raise FileNotFoundError(f"File not found: {data_file}")
-    else:
-        data_file = get_latest_preprocessed_file(exclude=EXCLUDE_FILES)
-        if not data_file:
-            raise FileNotFoundError(f"No data files found in {PROCESSED_DIR}")
-
     # Sample chunks (same for all questions for fair comparison)
-    chunks = sample_chunks(data_file, n_chunks, seed)
+    chunks = get_sample_chunks(n_chunks, seed, input_file)
     formatted_chunks = format_chunks(chunks)
 
     samples = []
@@ -120,7 +96,7 @@ def create_eval_dataset(
         # Build the user prompt
         user_prompt = STRUCTURE_PROPOSER_USER.format(
             question=q.question,
-            dataset_summary=f"Source: {data_file.name}",
+            dataset_summary="Personal activity data export",
             chunks=formatted_chunks,
         )
 
@@ -140,33 +116,6 @@ def create_eval_dataset(
         )
 
     return MemoryDataset(samples)
-
-
-def extract_json_from_response(text: str) -> str | None:
-    """Extract JSON from model response, handling markdown code blocks."""
-    # Try to find JSON in code blocks first
-    code_block_pattern = r"```(?:json)?\s*\n?([\s\S]*?)\n?```"
-    matches = re.findall(code_block_pattern, text)
-
-    for match in matches:
-        try:
-            json.loads(match.strip())
-            return match.strip()
-        except json.JSONDecodeError:
-            continue
-
-    # Try to find raw JSON object
-    brace_pattern = r"\{[\s\S]*\}"
-    matches = re.findall(brace_pattern, text)
-
-    for match in matches:
-        try:
-            json.loads(match)
-            return match
-        except json.JSONDecodeError:
-            continue
-
-    return None
 
 
 @scorer(metrics=[mean(), stderr()])

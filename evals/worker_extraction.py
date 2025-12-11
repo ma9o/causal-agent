@@ -1,0 +1,190 @@
+"""Inspect AI evaluation for worker data extraction.
+
+Evaluates smaller LLMs on their ability to extract dimension values from
+data chunks given a schema from the orchestrator.
+
+Usage:
+    inspect eval evals/worker_extraction.py --model openrouter/google/gemini-2.0-flash-001
+    inspect eval evals/worker_extraction.py --model openrouter/anthropic/claude-sonnet-4
+"""
+
+import json
+
+from inspect_ai import Task, task
+from inspect_ai.dataset import MemoryDataset, Sample
+from inspect_ai.scorer import Score, Target, mean, scorer, stderr
+from inspect_ai.solver import TaskState, generate, system_message
+
+from causal_agent.workers.prompts import WORKER_SYSTEM, WORKER_USER
+from causal_agent.workers.schemas import WorkerOutput
+from causal_agent.workers.agents import _format_dimensions, _get_outcome_description
+
+from .common import extract_json_from_response, get_sample_chunks, load_example_dag
+
+# Smaller models for worker eval (parallel execution)
+MODELS = {
+    "openrouter/google/gemini-2.0-flash-001": "gemini-flash",
+    "openrouter/anthropic/claude-sonnet-4": "claude-sonnet",
+    "openrouter/openai/gpt-4.1-mini": "gpt-mini",
+    "openrouter/deepseek/deepseek-chat": "deepseek-chat",
+}
+
+# Default question for worker eval (matches example_dag.json)
+DEFAULT_QUESTION = "What makes me feel like a competent engineer?"
+
+
+def create_eval_dataset(
+    n_chunks: int = 10,
+    seed: int = 42,
+    input_file: str | None = None,
+    question: str = DEFAULT_QUESTION,
+) -> MemoryDataset:
+    """Create evaluation dataset with chunks and the example DAG schema.
+
+    Args:
+        n_chunks: Number of chunks to include (each becomes a sample)
+        seed: Random seed for reproducible chunk sampling
+        input_file: Specific input file name, or None for latest
+        question: The causal question to use
+
+    Returns:
+        MemoryDataset with one sample per chunk
+    """
+    # Load the example DAG schema
+    schema = load_example_dag()
+    dimensions_text = _format_dimensions(schema)
+    outcome_description = _get_outcome_description(schema)
+
+    # Get chunks
+    chunks = get_sample_chunks(n_chunks, seed, input_file)
+
+    samples = []
+    for i, chunk in enumerate(chunks):
+        user_prompt = WORKER_USER.format(
+            question=question,
+            outcome_description=outcome_description,
+            dimensions=dimensions_text,
+            chunk=chunk,
+        )
+
+        samples.append(
+            Sample(
+                input=user_prompt,
+                id=f"chunk_{i:04d}",
+                metadata={
+                    "chunk_index": i,
+                    "question": question,
+                    "n_dimensions": len(schema.get("dimensions", [])),
+                },
+            )
+        )
+
+    return MemoryDataset(samples)
+
+
+@scorer(metrics=[mean(), stderr()])
+def worker_extraction_scorer():
+    """Score worker extractions by dataframe row count.
+
+    Returns:
+        - 0 if output is invalid (JSON parse error, schema validation error)
+        - Number of valid extraction rows if valid
+    """
+
+    async def score(state: TaskState, target: Target) -> Score:
+        completion = state.output.completion
+
+        # Extract JSON from response
+        json_str = extract_json_from_response(completion)
+        if json_str is None:
+            return Score(
+                value=0,
+                answer="[No valid JSON found]",
+                explanation=(
+                    "ERROR: Could not extract JSON from model response.\n"
+                    f"Response preview: {completion[:500]}..."
+                ),
+            )
+
+        # Parse JSON
+        try:
+            data = json.loads(json_str)
+        except json.JSONDecodeError as e:
+            return Score(
+                value=0,
+                answer=json_str[:200] + "..." if len(json_str) > 200 else json_str,
+                explanation=f"ERROR: JSON parse failed - {e}",
+            )
+
+        # Validate against schema
+        try:
+            output = WorkerOutput.model_validate(data)
+        except Exception as e:
+            return Score(
+                value=0,
+                answer=json_str[:500] + "..." if len(json_str) > 500 else json_str,
+                explanation=f"ERROR: Schema validation failed - {e}",
+            )
+
+        # Convert to dataframe and count rows
+        try:
+            df = output.to_dataframe()
+            n_rows = len(df)
+        except Exception as e:
+            return Score(
+                value=0,
+                answer=json_str[:500] + "..." if len(json_str) > 500 else json_str,
+                explanation=f"ERROR: DataFrame conversion failed - {e}",
+            )
+
+        # Build explanation
+        n_proposed = len(output.proposed_dimensions) if output.proposed_dimensions else 0
+        unique_dims = df["dimension"].n_unique() if n_rows > 0 else 0
+
+        explanation = (
+            f"Extracted {n_rows} observations across {unique_dims} dimensions. "
+            f"Proposed {n_proposed} new dimension(s)."
+        )
+
+        return Score(
+            value=n_rows,
+            answer=json_str[:500] + "..." if len(json_str) > 500 else json_str,
+            explanation=explanation,
+            metadata={
+                "n_extractions": n_rows,
+                "n_unique_dimensions": unique_dims,
+                "n_proposed_dimensions": n_proposed,
+            },
+        )
+
+    return score
+
+
+@task
+def worker_eval(
+    n_chunks: int = 10,
+    seed: int = 42,
+    input_file: str | None = None,
+    question: str = DEFAULT_QUESTION,
+):
+    """Evaluate LLM ability to extract dimension values from chunks.
+
+    Args:
+        n_chunks: Number of chunks to include in evaluation
+        seed: Random seed for chunk sampling (reproducibility)
+        input_file: Specific preprocessed file name, or None for latest
+        question: The causal question to use
+    """
+    return Task(
+        dataset=create_eval_dataset(
+            n_chunks=n_chunks,
+            seed=seed,
+            input_file=input_file,
+            question=question,
+        ),
+        solver=[
+            system_message(WORKER_SYSTEM),
+            generate(),
+        ],
+        scorer=worker_extraction_scorer(),
+    )
