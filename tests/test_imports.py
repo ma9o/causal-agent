@@ -14,6 +14,12 @@ def test_import_orchestrator():
     assert callable(propose_structure)
 
 
+def test_import_workers():
+    from causal_agent.workers import process_chunk, process_chunks, WorkerOutput
+    assert callable(process_chunk)
+    assert callable(process_chunks)
+
+
 def test_import_utils():
     from causal_agent.utils.data import (
         load_text_chunks,
