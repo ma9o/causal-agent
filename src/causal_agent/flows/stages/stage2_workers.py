@@ -1,7 +1,7 @@
 """Stage 2: Dimension Population (Workers).
 
-Workers process chunks in parallel to populate dimensions and suggest graph edits.
-The orchestrator then performs a 3-way merge of suggestions.
+Workers process chunks in parallel to extract dimension values.
+Each worker returns a validated Polars dataframe of extractions.
 """
 
 from pathlib import Path
@@ -13,7 +13,7 @@ from causal_agent.utils.data import (
     load_text_chunks as load_text_chunks_util,
     get_worker_chunk_size,
 )
-from causal_agent.workers.agents import process_chunk
+from causal_agent.workers.agents import process_chunk, WorkerResult
 
 
 @task(cache_policy=INPUTS)
@@ -26,19 +26,12 @@ def load_worker_chunks(input_path: Path) -> list[str]:
     retries=2,
     retry_delay_seconds=10,
 )
-def populate_dimensions(chunk: str, question: str, schema: dict) -> dict:
-    """Workers populate candidate dimensions for each chunk."""
-    return process_chunk(chunk, question, schema)
+def populate_dimensions(chunk: str, question: str, schema: dict) -> WorkerResult:
+    """Worker extracts dimension values from a chunk.
 
-
-@task(retries=1, cache_policy=INPUTS)
-def merge_suggestions(base_schema: dict, worker_outputs: list[dict]) -> dict:
-    """Orchestrator performs 3-way merge of worker suggestions.
-
-    TODO: Implement merge logic:
-    - Aggregate dimension extractions
-    - Reconcile conflicting edge suggestions
-    - Evaluate new dimension proposals
+    Returns:
+        WorkerResult containing:
+        - output: Validated WorkerOutput with extractions and proposed dimensions
+        - dataframe: Polars DataFrame with columns (dimension, value, timestamp)
     """
-    # For now, return base schema unchanged
-    return base_schema
+    return process_chunk(chunk, question, schema)

@@ -1,5 +1,6 @@
 """Schemas for worker LLM outputs."""
 
+import polars as pl
 from pydantic import BaseModel, Field
 
 
@@ -34,3 +35,25 @@ class WorkerOutput(BaseModel):
         default=None,
         description="Suggested new dimensions if something important is missing",
     )
+
+    def to_dataframe(self) -> pl.DataFrame:
+        """Convert extractions to a Polars DataFrame.
+
+        Returns:
+            DataFrame with columns: dimension, value, timestamp
+        """
+        if not self.extractions:
+            return pl.DataFrame(
+                schema={"dimension": pl.Utf8, "value": pl.Utf8, "timestamp": pl.Utf8}
+            )
+
+        return pl.DataFrame(
+            [
+                {
+                    "dimension": e.dimension,
+                    "value": e.value,
+                    "timestamp": e.timestamp,
+                }
+                for e in self.extractions
+            ]
+        )

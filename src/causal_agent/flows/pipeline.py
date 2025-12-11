@@ -17,7 +17,6 @@ from .stages import (
     # Stage 2
     load_worker_chunks,
     populate_dimensions,
-    merge_suggestions,
     # Stage 3
     check_identifiability,
     # Stage 4
@@ -57,6 +56,7 @@ def causal_inference_pipeline(
     schema = propose_structure(question, orchestrator_chunks[:SAMPLE_CHUNKS])
 
     # Stage 2: Parallel dimension population (worker chunk size)
+    # Each worker returns a WorkerResult with extractions as a Polars dataframe
     worker_chunks = load_worker_chunks(input_path)
     print(f"Loaded {len(worker_chunks)} worker chunks")
     worker_results = populate_dimensions.map(
@@ -64,7 +64,8 @@ def causal_inference_pipeline(
         question=question,
         schema=schema,
     )
-    schema = merge_suggestions(schema, worker_results)
+
+    # TODO: Stage 2b - Merge worker results and proposed dimensions
 
     # Stage 3: Identifiability
     identifiable = check_identifiability(schema["dag"], target_effects)

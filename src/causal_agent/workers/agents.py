@@ -2,8 +2,10 @@
 
 import asyncio
 import json
+from dataclasses import dataclass
 from pathlib import Path
 
+import polars as pl
 from dotenv import load_dotenv
 from inspect_ai.model import (
     ChatMessageSystem,
@@ -17,6 +19,14 @@ from .schemas import WorkerOutput
 
 # Load environment variables from .env file (for API keys)
 load_dotenv(Path(__file__).parent.parent.parent.parent / ".env")
+
+
+@dataclass
+class WorkerResult:
+    """Result from a worker including both raw output and parsed dataframe."""
+
+    output: WorkerOutput
+    dataframe: pl.DataFrame
 
 
 def _format_dimensions(schema: dict) -> str:
@@ -44,7 +54,7 @@ async def process_chunk_async(
     chunk: str,
     question: str,
     schema: dict,
-) -> dict:
+) -> WorkerResult:
     """
     Process a single data chunk against the candidate schema.
 
@@ -54,7 +64,7 @@ async def process_chunk_async(
         schema: The candidate schema from the orchestrator (DSEMStructure as dict)
 
     Returns:
-        WorkerOutput as a dictionary
+        WorkerResult with validated output and Polars dataframe
     """
     model_name = get_config().stage2_workers.model
     model = get_model(model_name)
@@ -96,15 +106,16 @@ async def process_chunk_async(
         raise ValueError(f"Failed to parse worker response as JSON: {e}") from e
 
     output = WorkerOutput.model_validate(data)
+    dataframe = output.to_dataframe()
 
-    return output.model_dump()
+    return WorkerResult(output=output, dataframe=dataframe)
 
 
 def process_chunk(
     chunk: str,
     question: str,
     schema: dict,
-) -> dict:
+) -> WorkerResult:
     """
     Synchronous wrapper for process_chunk_async.
 
@@ -114,7 +125,7 @@ def process_chunk(
         schema: The candidate schema from the orchestrator
 
     Returns:
-        WorkerOutput as a dictionary
+        WorkerResult with validated output and Polars dataframe
     """
     return asyncio.run(process_chunk_async(chunk, question, schema))
 
@@ -123,7 +134,7 @@ async def process_chunks_async(
     chunks: list[str],
     question: str,
     schema: dict,
-) -> list[dict]:
+) -> list[WorkerResult]:
     """
     Process multiple chunks in parallel.
 
@@ -133,7 +144,7 @@ async def process_chunks_async(
         schema: The candidate schema from the orchestrator
 
     Returns:
-        List of WorkerOutput dictionaries
+        List of WorkerResults
     """
     tasks = [
         process_chunk_async(chunk, question, schema)
@@ -147,7 +158,7 @@ def process_chunks(
     chunks: list[str],
     question: str,
     schema: dict,
-) -> list[dict]:
+) -> list[WorkerResult]:
     """
     Synchronous wrapper for process_chunks_async.
 
@@ -157,6 +168,6 @@ def process_chunks(
         schema: The candidate schema from the orchestrator
 
     Returns:
-        List of WorkerOutput dictionaries
+        List of WorkerResults
     """
     return asyncio.run(process_chunks_async(chunks, question, schema))

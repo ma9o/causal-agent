@@ -1,0 +1,414 @@
+{
+    "dimensions": [
+      {
+        "name": "perceived_engineering_competence",
+        "description": "Subjective feeling of being a capable, skilled engineer who can solve hard problems and build things that work. The core psychological outcome - inferred from patterns of successful deep technical engagement, problem resolution, and mastery-oriented behavior.",
+        "role": "endogenous",
+        "is_outcome": true,
+        "observability": "latent",
+        "temporal_status": "time_varying",
+        "causal_granularity": "daily",
+        "base_dtype": "continuous",
+        "aggregation": "mean"
+      },
+      {
+        "name": "deep_technical_exploration",
+        "description": "Intensity of focused, rabbit-hole style technical learning. Measured by sequential searches on related technical concepts (e.g., physical unclonable functions → consensus algorithms → composability), following citation chains, and sustained engagement with complex topics over multiple hours.",
+        "role": "endogenous",
+        "is_outcome": false,
+        "observability": "observed",
+        "temporal_status": "time_varying",
+        "causal_granularity": "daily",
+        "base_dtype": "count",
+        "aggregation": "sum"
+      },
+      {
+        "name": "academic_resource_engagement",
+        "description": "Access to scholarly/research materials - sci-hub, ResearchGate, arXiv, university PDFs, conference proceedings. Indicates serious engagement with cutting-edge knowledge beyond Stack Overflow solutions.",
+        "role": "endogenous",
+        "is_outcome": false,
+        "observability": "observed",
+        "temporal_status": "time_varying",
+        "causal_granularity": "daily",
+        "base_dtype": "count",
+        "aggregation": "sum"
+      },
+      {
+        "name": "work_debugging_activity",
+        "description": "Active problem-solving on real engineering challenges. Measured by searches for error messages, stack traces, library-specific issues (e.g., 'ruby custom stacktrace', 'sentry show post body'). Indicates hands-on coding work.",
+        "role": "endogenous",
+        "is_outcome": false,
+        "observability": "observed",
+        "temporal_status": "time_varying",
+        "causal_granularity": "daily",
+        "base_dtype": "count",
+        "aggregation": "sum"
+      },
+      {
+        "name": "problem_resolution_success",
+        "description": "Whether debugging/problem-solving sessions show resolution patterns - moving from error searches to implementation searches, or session ending without repeated frustrated searches. Indicates successful problem solving.",
+        "role": "endogenous",
+        "is_outcome": false,
+        "observability": "observed",
+        "temporal_status": "time_varying",
+        "causal_granularity": "daily",
+        "base_dtype": "binary",
+        "aggregation": "max"
+      },
+      {
+        "name": "topic_coherence",
+        "description": "How focused vs scattered the day's technical activity is. Measured as inverse entropy of search topics. High coherence = deep dive into one domain (functional programming). Low coherence = jumping between unrelated topics.",
+        "role": "endogenous",
+        "is_outcome": false,
+        "observability": "observed",
+        "temporal_status": "time_varying",
+        "causal_granularity": "daily",
+        "base_dtype": "continuous",
+        "aggregation": "mean"
+      },
+      {
+        "name": "distraction_browsing",
+        "description": "Non-technical, non-work browsing - travel planning, entertainment, casual curiosity, social searches. May reflect escape from frustration or simply life balance. Measured by count of clearly non-technical searches.",
+        "role": "endogenous",
+        "is_outcome": false,
+        "observability": "observed",
+        "temporal_status": "time_varying",
+        "causal_granularity": "daily",
+        "base_dtype": "count",
+        "aggregation": "sum"
+      },
+      {
+        "name": "morning_technical_activity",
+        "description": "Technical search/visit activity during morning hours (6am-12pm). Morning deep work on demanding topics may be particularly valuable for competence feelings due to higher cognitive resources.",
+        "role": "endogenous",
+        "is_outcome": false,
+        "observability": "observed",
+        "temporal_status": "time_varying",
+        "causal_granularity": "daily",
+        "base_dtype": "count",
+        "aggregation": "sum"
+      },
+      {
+        "name": "language_tool_exploration",
+        "description": "Exploration of programming languages, paradigms, and tools (Haskell, Scala, OCaml, monads, functional programming). Indicates investment in foundational CS knowledge beyond immediate work needs.",
+        "role": "endogenous",
+        "is_outcome": false,
+        "observability": "observed",
+        "temporal_status": "time_varying",
+        "causal_granularity": "daily",
+        "base_dtype": "count",
+        "aggregation": "sum"
+      },
+      {
+        "name": "total_search_volume",
+        "description": "Overall volume of search/browsing activity regardless of type. Baseline engagement level - very low may indicate illness, vacation, or depression; very high indicates active day.",
+        "role": "endogenous",
+        "is_outcome": false,
+        "observability": "observed",
+        "temporal_status": "time_varying",
+        "causal_granularity": "daily",
+        "base_dtype": "count",
+        "aggregation": "sum"
+      },
+      {
+        "name": "is_weekend",
+        "description": "Whether the day is Saturday or Sunday. Affects time availability, work pressure, and opportunity for exploratory vs deadline-driven learning.",
+        "role": "exogenous",
+        "is_outcome": false,
+        "observability": "observed",
+        "temporal_status": "time_varying",
+        "causal_granularity": "daily",
+        "base_dtype": "binary",
+        "aggregation": "last"
+      },
+      {
+        "name": "cognitive_energy",
+        "description": "Available mental resources for demanding intellectual work. Latent capacity that enables or constrains deep technical engagement. Depleted by stress, poor sleep, sustained effort; restored by rest.",
+        "role": "endogenous",
+        "is_outcome": false,
+        "observability": "latent",
+        "temporal_status": "time_varying",
+        "causal_granularity": "daily",
+        "base_dtype": "continuous",
+        "aggregation": "mean"
+      },
+      {
+        "name": "learning_drive",
+        "description": "Active motivation to learn and explore technical topics beyond immediate job requirements. Intrinsic curiosity activation level - the urge to understand deeply rather than just solve and move on.",
+        "role": "endogenous",
+        "is_outcome": false,
+        "observability": "latent",
+        "temporal_status": "time_varying",
+        "causal_granularity": "daily",
+        "base_dtype": "continuous",
+        "aggregation": "mean"
+      },
+      {
+        "name": "mental_wellbeing",
+        "description": "Overall psychological health state. Evidence of mental health concerns in data (psychiatrist searches). Lower wellbeing reduces capacity for demanding cognitive work and intrinsic motivation.",
+        "role": "endogenous",
+        "is_outcome": false,
+        "observability": "latent",
+        "temporal_status": "time_varying",
+        "causal_granularity": "weekly",
+        "base_dtype": "continuous",
+        "aggregation": "mean"
+      },
+      {
+        "name": "health_seeking_activity",
+        "description": "Searches related to mental/physical health, doctors, psychiatrists, symptoms. Observable indicator of wellbeing concerns.",
+        "role": "endogenous",
+        "is_outcome": false,
+        "observability": "observed",
+        "temporal_status": "time_varying",
+        "causal_granularity": "weekly",
+        "base_dtype": "count",
+        "aggregation": "sum"
+      },
+      {
+        "name": "baseline_intellectual_curiosity",
+        "description": "Trait-level disposition toward intellectual exploration and understanding complex systems. Time-stable individual difference evident in consistent pattern of deep technical rabbit holes across years.",
+        "role": "exogenous",
+        "is_outcome": false,
+        "observability": "latent",
+        "temporal_status": "time_invariant",
+        "causal_granularity": null,
+        "base_dtype": "continuous",
+        "aggregation": null
+      },
+      {
+        "name": "mastery_orientation",
+        "description": "Trait-level preference for deep understanding and mastery over quick task completion. Orientation toward learning goals rather than performance goals. Stable personal characteristic.",
+        "role": "exogenous",
+        "is_outcome": false,
+        "observability": "latent",
+        "temporal_status": "time_invariant",
+        "causal_granularity": null,
+        "base_dtype": "continuous",
+        "aggregation": null
+      },
+      {
+        "name": "entrepreneurial_motivation",
+        "description": "Interest in startups, building products, resourcefulness. Observed in Y Combinator searches, Paul Graham readings, startup history. May compete with or complement pure technical mastery orientation.",
+        "role": "endogenous",
+        "is_outcome": false,
+        "observability": "observed",
+        "temporal_status": "time_varying",
+        "causal_granularity": "weekly",
+        "base_dtype": "count",
+        "aggregation": "sum"
+      }
+    ],
+    "edges": [
+      {
+        "cause": "cognitive_energy",
+        "effect": "deep_technical_exploration",
+        "description": "Deep technical rabbit holes require sustained cognitive resources. Low energy days see shallow browsing; high energy enables multi-hour focused exploration of complex topics.",
+        "lagged": false
+      },
+      {
+        "cause": "cognitive_energy",
+        "effect": "topic_coherence",
+        "description": "Mental energy enables sustained focus on a single domain. Depleted cognitive resources lead to scattered, jumping-around browsing patterns.",
+        "lagged": false
+      },
+      {
+        "cause": "cognitive_energy",
+        "effect": "work_debugging_activity",
+        "description": "Tackling hard debugging problems requires available mental resources. Low energy may lead to avoidance of difficult technical challenges.",
+        "lagged": false
+      },
+      {
+        "cause": "learning_drive",
+        "effect": "deep_technical_exploration",
+        "description": "Active curiosity motivates the pursuit of understanding beyond immediate needs. High learning drive leads to following citation chains, reading papers, exploring tangential concepts.",
+        "lagged": false
+      },
+      {
+        "cause": "learning_drive",
+        "effect": "academic_resource_engagement",
+        "description": "Motivation to truly understand drives seeking primary sources - papers, PhD theses, original research - rather than just blog posts and Stack Overflow.",
+        "lagged": false
+      },
+      {
+        "cause": "learning_drive",
+        "effect": "language_tool_exploration",
+        "description": "Interest in programming language theory and paradigms (Haskell, monads, referential transparency) stems from drive to understand computation deeply.",
+        "lagged": false
+      },
+      {
+        "cause": "topic_coherence",
+        "effect": "deep_technical_exploration",
+        "description": "Focused attention on a single domain enables deeper exploration. Coherent sessions build on each search; scattered sessions never reach depth.",
+        "lagged": false
+      },
+      {
+        "cause": "deep_technical_exploration",
+        "effect": "perceived_engineering_competence",
+        "description": "Successfully going deep on hard technical topics directly builds competence feelings. Understanding physical unclonable functions or monads creates mastery experience.",
+        "lagged": false
+      },
+      {
+        "cause": "academic_resource_engagement",
+        "effect": "perceived_engineering_competence",
+        "description": "Reading and understanding academic papers signals (to oneself) serious engineering capability. Engaging with research-level content builds identity as competent engineer.",
+        "lagged": false
+      },
+      {
+        "cause": "work_debugging_activity",
+        "effect": "problem_resolution_success",
+        "description": "Active debugging effort is prerequisite for resolution. More debugging activity increases likelihood of finding solutions.",
+        "lagged": false
+      },
+      {
+        "cause": "problem_resolution_success",
+        "effect": "perceived_engineering_competence",
+        "description": "Successfully solving real engineering problems directly builds competence feelings. The debugging-then-resolution cycle is core to engineering self-efficacy.",
+        "lagged": false
+      },
+      {
+        "cause": "language_tool_exploration",
+        "effect": "perceived_engineering_competence",
+        "description": "Understanding programming language theory and advanced paradigms builds deep competence. Knowing why Haskell needs monads for IO makes one feel like a serious engineer.",
+        "lagged": false
+      },
+      {
+        "cause": "morning_technical_activity",
+        "effect": "perceived_engineering_competence",
+        "description": "Technical work in morning hours, when cognitive resources peak, may be more effective for building competence feelings than late-night frustrated debugging.",
+        "lagged": false
+      },
+      {
+        "cause": "distraction_browsing",
+        "effect": "deep_technical_exploration",
+        "description": "Time spent on travel planning, entertainment searches displaces time available for deep technical work. Contemporaneous tradeoff within the day.",
+        "lagged": false
+      },
+      {
+        "cause": "is_weekend",
+        "effect": "cognitive_energy",
+        "description": "Weekends may restore cognitive resources through reduced work pressure. Or deplete them through different activities. Direction unclear but relationship exists.",
+        "lagged": false
+      },
+      {
+        "cause": "is_weekend",
+        "effect": "deep_technical_exploration",
+        "description": "Weekends provide uninterrupted time for exploratory learning without work deadlines. The PUF/blockchain exploration happened on a Friday-Saturday span.",
+        "lagged": false
+      },
+      {
+        "cause": "is_weekend",
+        "effect": "distraction_browsing",
+        "description": "Weekends naturally have more non-work browsing - travel planning, entertainment, leisure curiosity.",
+        "lagged": false
+      },
+      {
+        "cause": "mental_wellbeing",
+        "effect": "cognitive_energy",
+        "description": "Poor mental health depletes cognitive resources available for demanding work. Depression, anxiety reduce capacity for sustained intellectual effort.",
+        "lagged": true
+      },
+      {
+        "cause": "mental_wellbeing",
+        "effect": "learning_drive",
+        "description": "Mental wellbeing affects intrinsic motivation. Depression diminishes curiosity and interest in exploration; good mental health enables active learning drive.",
+        "lagged": true
+      },
+      {
+        "cause": "health_seeking_activity",
+        "effect": "mental_wellbeing",
+        "description": "Seeking mental health care (psychiatrist searches) may improve wellbeing over time, or high activity indicates current low wellbeing. Bidirectional indicator relationship.",
+        "lagged": false
+      },
+      {
+        "cause": "perceived_engineering_competence",
+        "effect": "learning_drive",
+        "description": "Feeling competent yesterday increases motivation to learn today. Success breeds engagement; incompetence feelings lead to avoidance.",
+        "lagged": true
+      },
+      {
+        "cause": "perceived_engineering_competence",
+        "effect": "distraction_browsing",
+        "description": "Low competence feelings lead to escape behavior - seeking distraction the next day. High competence creates positive engagement spiral.",
+        "lagged": true
+      },
+      {
+        "cause": "perceived_engineering_competence",
+        "effect": "cognitive_energy",
+        "description": "Competence feelings are energizing; feeling incompetent is exhausting. Yesterday's competence experience affects today's available cognitive resources.",
+        "lagged": true
+      },
+      {
+        "cause": "deep_technical_exploration",
+        "effect": "perceived_engineering_competence",
+        "description": "Cumulative learning effect - yesterday's deep exploration continues to build competence feelings today as knowledge consolidates.",
+        "lagged": true
+      },
+      {
+        "cause": "baseline_intellectual_curiosity",
+        "effect": "learning_drive",
+        "description": "Trait curiosity manifests as daily learning motivation. Stable disposition toward intellectual exploration activates situation-specific learning drive.",
+        "lagged": true
+      },
+      {
+        "cause": "baseline_intellectual_curiosity",
+        "effect": "deep_technical_exploration",
+        "description": "Curious people naturally engage in more deep technical exploration. The consistent rabbit-hole pattern across years reflects stable trait.",
+        "lagged": true
+      },
+      {
+        "cause": "baseline_intellectual_curiosity",
+        "effect": "academic_resource_engagement",
+        "description": "Trait curiosity drives seeking primary sources and academic materials rather than surface-level explanations.",
+        "lagged": true
+      },
+      {
+        "cause": "mastery_orientation",
+        "effect": "academic_resource_engagement",
+        "description": "Preference for deep understanding drives engagement with scholarly sources where real depth exists.",
+        "lagged": true
+      },
+      {
+        "cause": "mastery_orientation",
+        "effect": "topic_coherence",
+        "description": "Mastery-oriented individuals focus deeply on single domains rather than shallow breadth. Trait shapes daily attention patterns.",
+        "lagged": true
+      },
+      {
+        "cause": "mastery_orientation",
+        "effect": "language_tool_exploration",
+        "description": "Interest in programming language fundamentals reflects mastery orientation - wanting to understand computation itself, not just use tools.",
+        "lagged": true
+      },
+      {
+        "cause": "entrepreneurial_motivation",
+        "effect": "perceived_engineering_competence",
+        "description": "Interest in building products and startups may complement or compete with pure technical mastery as source of competence feelings.",
+        "lagged": true
+      },
+      {
+        "cause": "entrepreneurial_motivation",
+        "effect": "learning_drive",
+        "description": "Startup motivation may drive practical learning (what's needed to build) but potentially reduce pure intellectual exploration.",
+        "lagged": true
+      },
+      {
+        "cause": "work_debugging_activity",
+        "effect": "cognitive_energy",
+        "description": "Intense debugging sessions deplete cognitive resources. Heavy debugging today reduces available energy tomorrow.",
+        "lagged": true
+      },
+      {
+        "cause": "total_search_volume",
+        "effect": "deep_technical_exploration",
+        "description": "Higher overall activity level provides more opportunity for deep exploration to emerge. Baseline engagement is prerequisite for depth.",
+        "lagged": false
+      },
+      {
+        "cause": "mental_wellbeing",
+        "effect": "perceived_engineering_competence",
+        "description": "Poor mental health directly undermines competence feelings regardless of actual technical activity. Depression distorts self-perception.",
+        "lagged": true
+      }
+    ]
+  }

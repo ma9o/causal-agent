@@ -1,4 +1,4 @@
-from .agents import process_chunk, process_chunks
+from .agents import process_chunk, process_chunks, WorkerResult
 from .schemas import (
     Extraction,
     ProposedDimension,
@@ -8,6 +8,7 @@ from .schemas import (
 __all__ = [
     "process_chunk",
     "process_chunks",
+    "WorkerResult",
     "Extraction",
     "ProposedDimension",
     "WorkerOutput",
