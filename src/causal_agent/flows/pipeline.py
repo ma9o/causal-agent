@@ -1,89 +1,32 @@
-from pathlib import Path
+"""Main causal inference pipeline.
 
-from prefect import flow, task
-from prefect.cache_policies import INPUTS
-from typing import Any
+Orchestrates all stages from structure proposal to intervention analysis.
+"""
+
+from prefect import flow
 
 from causal_agent.utils.data import (
-    load_text_chunks as load_text_chunks_util,
     resolve_input_path,
     load_query,
-    get_orchestrator_chunk_size,
-    get_worker_chunk_size,
     SAMPLE_CHUNKS,
 )
-
-
-@task(cache_policy=INPUTS)
-def load_orchestrator_chunks(input_path: Path) -> list[str]:
-    """Load chunks sized for orchestrator (stage 1)."""
-    return load_text_chunks_util(input_path, chunk_size=get_orchestrator_chunk_size())
-
-
-@task(cache_policy=INPUTS)
-def load_worker_chunks(input_path: Path) -> list[str]:
-    """Load chunks sized for workers (stage 2)."""
-    return load_text_chunks_util(input_path, chunk_size=get_worker_chunk_size())
-
-
-@task(retries=2, retry_delay_seconds=30, cache_policy=INPUTS)
-def propose_structure(question: str, data_sample: list[str]) -> dict:
-    """Stage 1: Orchestrator proposes dimensions, autocorrelations, time granularities, DAG."""
-    from causal_agent.orchestrator.agents import propose_structure as propose_structure_agent
-
-    return propose_structure_agent(question, data_sample)
-
-
-@task(
-    retries=2,
-    retry_delay_seconds=10,
-    task_run_name="populate-chunk-{chunk_id}",
+from .stages import (
+    # Stage 1
+    load_orchestrator_chunks,
+    propose_structure,
+    # Stage 2
+    load_worker_chunks,
+    populate_dimensions,
+    merge_suggestions,
+    # Stage 3
+    check_identifiability,
+    # Stage 4
+    specify_model,
+    elicit_priors,
+    # Stage 5
+    fit_model,
+    run_interventions,
 )
-def populate_dimensions(chunk: str, chunk_id: int, schema: dict) -> dict:
-    """Stage 2: Workers populate candidate dimensions for each chunk."""
-    pass
-
-
-@task(retries=1, cache_policy=INPUTS)
-def merge_suggestions(base_schema: dict, worker_suggestions: list[dict]) -> dict:
-    """Stage 2b: Orchestrator performs 3-way merge and backfill."""
-    pass
-
-
-@task(cache_policy=INPUTS)
-def check_identifiability(dag: dict, target_effects: list[str]) -> bool:
-    """Stage 3: Run DoWhy identifiability checks."""
-    pass
-
-
-@task
-def run_sensitivity_analysis(dag: dict, naive_model: Any) -> dict:
-    """Stage 3b: Cinelli-Hazlett sensitivity analysis if unidentifiable."""
-    pass
-
-
-@task(retries=1, cache_policy=INPUTS)
-def specify_model(dag: dict, schema: dict) -> dict:
-    """Stage 4: Orchestrator specifies GLM in PyMC."""
-    pass
-
-
-@task(retries=2, retry_delay_seconds=10, task_run_name="elicit-priors")
-def elicit_priors(model_spec: dict) -> dict:
-    """Stage 4b: Workers provide priors."""
-    pass
-
-
-@task(timeout_seconds=3600, retries=1)
-def fit_model(model_spec: dict, priors: dict, data: list[str]) -> Any:
-    """Stage 5: Fit PyMC model."""
-    pass
-
-
-@task
-def run_interventions(fitted_model: Any, interventions: list[str]) -> list[dict]:
-    """Stage 5b: Run interventions and counterfactuals, rank by effect size."""
-    pass
 
 
 @flow(log_prints=True)
@@ -100,7 +43,7 @@ def causal_inference_pipeline(
         target_effects: Causal effects to estimate
         input_file: Filename in data/processed/ (default: latest file)
     """
-    # Stage 0: Load question and data chunks
+    # Stage 0: Load question and resolve input path
     question = load_query(query_file)
     print(f"Query: {query_file}")
     print(f"Question: {question[:100]}..." if len(question) > 100 else f"Question: {question}")
