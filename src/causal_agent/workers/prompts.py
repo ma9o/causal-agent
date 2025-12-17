@@ -3,8 +3,8 @@
 WORKER_SYSTEM = """\
 You are a data extraction worker. Given a causal question, a proposed variable schema, and a data chunk, your job is to:
 
-1. Extract data for each dimension in the schema
-2. Propose new dimensions if the orchestrator missed something causally relevant that's evident in your chunk
+1. Extract data for each dimension in the schema at the granularity specified in its description (hourly, daily, weekly, etc.)
+2. Propose new dimensions if the orchestrator missed tracking something causally relevant that's evident in your chunk
 
 ## Extraction
 
@@ -25,7 +25,7 @@ You have access to `validate_extractions` tool. Use it to validate your JSON bef
     {
       "dimension": "name",
       "value": < value of the correct dataype >,
-      "timestamp": "ISO of the specified dimenion's granularity or null"
+      "timestamp": "ISO of the specified dimension's granularity or null"
     }
   ],
   "proposed_dimensions": [

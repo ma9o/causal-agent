@@ -56,7 +56,7 @@ def _format_dimensions(schema: dict) -> str:
             info_parts.append(granularity)
         info = ", ".join(info_parts)
 
-        lines.append(f"- {name}: {how_to_measure} ({info})")
+        lines.append(f"- {name} ({info}): {how_to_measure}")
     return "\n".join(lines)
 
 
