@@ -9,6 +9,7 @@ from inspect_ai.model import (
     GenerateConfig,
     Model,
 )
+from inspect_ai.tool import Tool, tool
 
 if TYPE_CHECKING:
     from inspect_ai.model import ChatMessage
@@ -32,19 +33,54 @@ def parse_json_response(content: str) -> dict:
         raise ValueError(f"Failed to parse model response as JSON: {e}") from e
 
 
+@tool
+def validate_dsem_structure():
+    """Tool for validating DSEM structure JSON."""
+
+    async def execute(structure_json: str) -> str:
+        """
+        Validate a DSEM structure and return all validation errors.
+
+        Args:
+            structure_json: The JSON string containing the DSEM structure to validate.
+
+        Returns:
+            "VALID" if the structure passes validation, otherwise a list of all errors found.
+        """
+        from causal_agent.orchestrator.schemas import validate_structure
+
+        # Parse JSON first
+        try:
+            data = json.loads(structure_json)
+        except json.JSONDecodeError as e:
+            return f"JSON parse error: {e}"
+
+        # Validate and collect all errors
+        structure, errors = validate_structure(data)
+
+        if not errors:
+            return "VALID"
+
+        return "VALIDATION ERRORS:\n" + "\n".join(f"- {e}" for e in errors)
+
+    return execute
+
+
 async def multi_turn_generate(
     messages: list["ChatMessage"],
     model: Model,
     follow_ups: list[str] | None = None,
+    tools: list[Tool] | None = None,
     config: GenerateConfig | None = None,
 ) -> str:
     """
-    Run a multi-turn conversation: generate, then continue with follow-up prompts.
+    Run a multi-turn conversation with optional tool use.
 
     Args:
         messages: Initial messages (typically system + user prompt)
         model: The model to use for generation
         follow_ups: List of follow-up user prompts to send after each response (default: none)
+        tools: Optional list of tools the model can use (enables generate_loop)
         config: Optional generation config
 
     Returns:
@@ -53,14 +89,34 @@ async def multi_turn_generate(
     messages = list(messages)  # Don't mutate original
     follow_ups = follow_ups or []
 
-    # Initial generation
-    response = await model.generate(messages, config=config)
-    messages.append(ChatMessageAssistant(content=response.completion))
+    if tools:
+        # Use generate_loop for tool-enabled generation
+        final_messages, output = await model.generate_loop(
+            messages,
+            tools=tools,
+            config=config,
+        )
+        messages = list(final_messages)
 
-    # Follow-up turns
-    for prompt in follow_ups:
-        messages.append(ChatMessageUser(content=prompt))
+        # Follow-up turns with tools
+        for prompt in follow_ups:
+            messages.append(ChatMessageUser(content=prompt))
+            final_messages, output = await model.generate_loop(
+                messages,
+                tools=tools,
+                config=config,
+            )
+            messages = list(final_messages)
+
+        return output.completion
+    else:
+        # Simple generation without tools
         response = await model.generate(messages, config=config)
         messages.append(ChatMessageAssistant(content=response.completion))
 
-    return response.completion
+        for prompt in follow_ups:
+            messages.append(ChatMessageUser(content=prompt))
+            response = await model.generate(messages, config=config)
+            messages.append(ChatMessageAssistant(content=response.completion))
+
+        return response.completion

@@ -262,3 +262,143 @@ class DSEMStructure(BaseModel):
     def to_edge_list(self) -> list[tuple[str, str]]:
         """Convert to edge list format."""
         return [(e.cause, e.effect) for e in self.edges]
+
+
+def validate_structure(data: dict) -> tuple[DSEMStructure | None, list[str]]:
+    """Validate a structure dict, collecting ALL errors instead of failing on first.
+
+    Args:
+        data: Dictionary to validate as DSEMStructure
+
+    Returns:
+        Tuple of (validated structure or None, list of error messages)
+    """
+    errors = []
+
+    # First check basic structure
+    if not isinstance(data, dict):
+        return None, ["Input must be a dictionary"]
+
+    dimensions = data.get("dimensions", [])
+    edges = data.get("edges", [])
+
+    if not isinstance(dimensions, list):
+        errors.append("'dimensions' must be a list")
+        dimensions = []
+    if not isinstance(edges, list):
+        errors.append("'edges' must be a list")
+        edges = []
+
+    # Validate each dimension individually to collect all errors
+    valid_dimensions = []
+    dim_names = set()
+
+    for i, dim_data in enumerate(dimensions):
+        if not isinstance(dim_data, dict):
+            errors.append(f"dimensions[{i}]: must be a dictionary")
+            continue
+
+        name = dim_data.get("name", f"<unnamed_{i}>")
+
+        # Check for duplicate names
+        if name in dim_names:
+            errors.append(f"Duplicate dimension name: '{name}'")
+        dim_names.add(name)
+
+        try:
+            dim = Dimension.model_validate(dim_data)
+            valid_dimensions.append(dim)
+        except Exception as e:
+            # Extract error messages from Pydantic validation
+            error_msg = str(e)
+            # Clean up Pydantic error formatting
+            if "validation error" in error_msg.lower():
+                for line in error_msg.split("\n")[1:]:
+                    line = line.strip()
+                    if line and not line.startswith("For further"):
+                        errors.append(f"dimensions[{i}] ({name}): {line}")
+            else:
+                errors.append(f"dimensions[{i}] ({name}): {error_msg}")
+
+    # Build dim map for edge validation
+    dim_map = {d.name: d for d in valid_dimensions}
+
+    # Validate each edge individually
+    valid_edges = []
+    for i, edge_data in enumerate(edges):
+        if not isinstance(edge_data, dict):
+            errors.append(f"edges[{i}]: must be a dictionary")
+            continue
+
+        cause = edge_data.get("cause", "<missing>")
+        effect = edge_data.get("effect", "<missing>")
+        edge_label = f"edges[{i}] ({cause} -> {effect})"
+
+        # Check basic edge structure
+        try:
+            edge = CausalEdge.model_validate(edge_data)
+        except Exception as e:
+            errors.append(f"{edge_label}: {e}")
+            continue
+
+        # Check references
+        if edge.cause not in dim_map:
+            errors.append(f"{edge_label}: cause '{edge.cause}' not in dimensions")
+            continue
+        if edge.effect not in dim_map:
+            errors.append(f"{edge_label}: effect '{edge.effect}' not in dimensions")
+            continue
+
+        cause_dim = dim_map[edge.cause]
+        effect_dim = dim_map[edge.effect]
+
+        # Check exogenous constraint
+        if effect_dim.role == Role.EXOGENOUS:
+            errors.append(f"{edge_label}: exogenous variable '{edge.effect}' cannot be an effect")
+            continue
+
+        # Check contemporaneous timescale constraint
+        cause_gran = cause_dim.causal_granularity
+        effect_gran = effect_dim.causal_granularity
+        both_time_varying = cause_gran is not None and effect_gran is not None
+        if not edge.lagged and both_time_varying and cause_gran != effect_gran:
+            errors.append(
+                f"{edge_label}: contemporaneous edge requires same timescale, "
+                f"got {cause_gran} -> {effect_gran}"
+            )
+            continue
+
+        # Compute lag_hours
+        edge.lag_hours = compute_lag_hours(cause_gran, effect_gran, edge.lagged)
+        valid_edges.append(edge)
+
+    # Check outcome constraints
+    outcomes = [d for d in valid_dimensions if d.is_outcome]
+    if len(outcomes) == 0:
+        errors.append("Exactly one dimension must have is_outcome=true (none found)")
+    elif len(outcomes) > 1:
+        names = [d.name for d in outcomes]
+        errors.append(f"Only one outcome allowed, got {len(outcomes)}: {names}")
+
+    # Check acyclicity of contemporaneous edges
+    contemporaneous_edges = [(e.cause, e.effect) for e in valid_edges if not e.lagged]
+    if contemporaneous_edges:
+        import networkx as nx
+
+        G = nx.DiGraph(contemporaneous_edges)
+        if not nx.is_directed_acyclic_graph(G):
+            cycles = list(nx.simple_cycles(G))
+            errors.append(
+                f"Contemporaneous edges form cycle(s): {cycles}. "
+                "Use lagged=true for feedback loops."
+            )
+
+    # If no errors, build and return the structure
+    if not errors:
+        try:
+            structure = DSEMStructure(dimensions=valid_dimensions, edges=valid_edges)
+            return structure, []
+        except Exception as e:
+            errors.append(f"Final validation failed: {e}")
+
+    return None, errors

@@ -10,7 +10,7 @@ from inspect_ai.model import (
 )
 
 from causal_agent.utils.config import get_config
-from causal_agent.utils.llm import multi_turn_generate, parse_json_response
+from causal_agent.utils.llm import multi_turn_generate, parse_json_response, validate_dsem_structure
 from .prompts import (
     STRUCTURE_PROPOSER_SYSTEM,
     STRUCTURE_PROPOSER_USER,
@@ -60,11 +60,12 @@ async def propose_structure_async(
         ),
     ]
 
-    # Run multi-turn: initial proposal + self-review
+    # Run multi-turn: initial proposal + self-review, with validation tool available
     completion = await multi_turn_generate(
         messages=messages,
         model=model,
         follow_ups=[STRUCTURE_REVIEW_REQUEST],
+        tools=[validate_dsem_structure()],
     )
 
     # Parse and validate final result

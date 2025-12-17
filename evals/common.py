@@ -7,7 +7,7 @@ from inspect_ai.model import GenerateConfig, get_model
 from inspect_ai.solver import Generate, TaskState, generate, solver
 
 from causal_agent.orchestrator.prompts import STRUCTURE_REVIEW_REQUEST
-from causal_agent.utils.llm import multi_turn_generate
+from causal_agent.utils.llm import multi_turn_generate, validate_dsem_structure
 from causal_agent.utils.data import (
     PROCESSED_DIR,
     get_latest_preprocessed_file,
@@ -27,9 +27,9 @@ def reasoning_generate():
 
 @solver
 def two_stage_proposal_solver():
-    """Solver that runs multi-turn proposal with self-review.
+    """Solver that runs multi-turn proposal with self-review and validation tool.
 
-    Uses multi_turn_generate from agents.py, ensuring
+    Uses multi_turn_generate with validation tool, ensuring
     evals test the exact same logic as production.
     """
 
@@ -39,8 +39,9 @@ def two_stage_proposal_solver():
 
         completion = await multi_turn_generate(
             messages=list(state.messages),
-            follow_ups=[STRUCTURE_REVIEW_REQUEST],
             model=model,
+            follow_ups=[STRUCTURE_REVIEW_REQUEST],
+            tools=[validate_dsem_structure()],
             config=config,
         )
 

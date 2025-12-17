@@ -107,6 +107,10 @@ Choose based on meaning: mean (average level), sum (cumulative), max/min (extrem
 4. Exactly one variable must have **is_outcome=true** (the Y implied by the question)
 5. Only **endogenous** variables can be outcomes
 6. **observed** variables require how_to_measure; **latent** variables must have how_to_measure=null
+
+## Validation Tool
+
+You have access to `validate_dsem_structure` tool. Use it to validate your JSON before returning the final answer. Keep validating until you get "VALID".
 """
 
 STRUCTURE_PROPOSER_USER = """\
