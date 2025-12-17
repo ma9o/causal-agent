@@ -48,8 +48,6 @@ Set `is_outcome: true` for the primary outcome variable Y implied by the questio
 | **categorical** | Unordered categories | day_of_week, activity_type |
 | **continuous** | Real-valued measurements | temperature, mood_rating, hours_slept |
 
-**Precedence:** Always select the most specific type. binary ⊂ ordinal/count ⊂ continuous 
-
 ## Autoregressive Structure
 
 All outcomes automatically receive AR(1) at their native timescale. Do NOT include explicit self-loops.
@@ -141,6 +139,8 @@ For each **observed** dimension, verify that measurement_dtype, aggregation, and
 - **measurement_dtype: continuous without units or scale** → Workers will invent numbers. Anchor it.
 - **measurement_dtype: ordinal without level definitions** → Define levels explicitly.
 - **measurement_dtype + aggregation mismatch** → Check the table above.
+
+IMPORTANT: **Per-unit enumeration** (e.g., "For each minute, record 1 if...") → Workers process text chunks, not time-indexed databases. They cannot reliably enumerate time units or iterate over implicit sets. Reframe as a aggreagation: "[count/min/ax/etc.] the number of minutes containing at least one event."
 
 ## Output
 

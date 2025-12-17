@@ -215,7 +215,9 @@ class DSEMStructure(BaseModel):
             effect_gran = effect_dim.causal_granularity
 
             # Contemporaneous (lagged=False) requires same timescale
-            if not edge.lagged and cause_gran != effect_gran:
+            # Exception: time-invariant causes (granularity=None) can affect any timescale
+            both_time_varying = cause_gran is not None and effect_gran is not None
+            if not edge.lagged and both_time_varying and cause_gran != effect_gran:
                 raise ValueError(
                     f"Contemporaneous edge (lagged=false) requires same timescale: "
                     f"{edge.cause} ({cause_gran}) -> {edge.effect} ({effect_gran})"

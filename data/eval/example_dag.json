@@ -1,414 +1,338 @@
 {
-    "dimensions": [
-      {
-        "name": "perceived_engineering_competence",
-        "description": "Subjective feeling of being a capable, skilled engineer who can solve hard problems and build things that work. The core psychological outcome - inferred from patterns of successful deep technical engagement, problem resolution, and mastery-oriented behavior.",
-        "role": "endogenous",
-        "is_outcome": true,
-        "observability": "latent",
-        "temporal_status": "time_varying",
-        "causal_granularity": "daily",
-        "base_dtype": "continuous",
-        "aggregation": "mean"
-      },
-      {
-        "name": "deep_technical_exploration",
-        "description": "Intensity of focused, rabbit-hole style technical learning. Measured by sequential searches on related technical concepts (e.g., physical unclonable functions → consensus algorithms → composability), following citation chains, and sustained engagement with complex topics over multiple hours.",
-        "role": "endogenous",
-        "is_outcome": false,
-        "observability": "observed",
-        "temporal_status": "time_varying",
-        "causal_granularity": "daily",
-        "base_dtype": "count",
-        "aggregation": "sum"
-      },
-      {
-        "name": "academic_resource_engagement",
-        "description": "Access to scholarly/research materials - sci-hub, ResearchGate, arXiv, university PDFs, conference proceedings. Indicates serious engagement with cutting-edge knowledge beyond Stack Overflow solutions.",
-        "role": "endogenous",
-        "is_outcome": false,
-        "observability": "observed",
-        "temporal_status": "time_varying",
-        "causal_granularity": "daily",
-        "base_dtype": "count",
-        "aggregation": "sum"
-      },
-      {
-        "name": "work_debugging_activity",
-        "description": "Active problem-solving on real engineering challenges. Measured by searches for error messages, stack traces, library-specific issues (e.g., 'ruby custom stacktrace', 'sentry show post body'). Indicates hands-on coding work.",
-        "role": "endogenous",
-        "is_outcome": false,
-        "observability": "observed",
-        "temporal_status": "time_varying",
-        "causal_granularity": "daily",
-        "base_dtype": "count",
-        "aggregation": "sum"
-      },
-      {
-        "name": "problem_resolution_success",
-        "description": "Whether debugging/problem-solving sessions show resolution patterns - moving from error searches to implementation searches, or session ending without repeated frustrated searches. Indicates successful problem solving.",
-        "role": "endogenous",
-        "is_outcome": false,
-        "observability": "observed",
-        "temporal_status": "time_varying",
-        "causal_granularity": "daily",
-        "base_dtype": "binary",
-        "aggregation": "max"
-      },
-      {
-        "name": "topic_coherence",
-        "description": "How focused vs scattered the day's technical activity is. Measured as inverse entropy of search topics. High coherence = deep dive into one domain (functional programming). Low coherence = jumping between unrelated topics.",
-        "role": "endogenous",
-        "is_outcome": false,
-        "observability": "observed",
-        "temporal_status": "time_varying",
-        "causal_granularity": "daily",
-        "base_dtype": "continuous",
-        "aggregation": "mean"
-      },
-      {
-        "name": "distraction_browsing",
-        "description": "Non-technical, non-work browsing - travel planning, entertainment, casual curiosity, social searches. May reflect escape from frustration or simply life balance. Measured by count of clearly non-technical searches.",
-        "role": "endogenous",
-        "is_outcome": false,
-        "observability": "observed",
-        "temporal_status": "time_varying",
-        "causal_granularity": "daily",
-        "base_dtype": "count",
-        "aggregation": "sum"
-      },
-      {
-        "name": "morning_technical_activity",
-        "description": "Technical search/visit activity during morning hours (6am-12pm). Morning deep work on demanding topics may be particularly valuable for competence feelings due to higher cognitive resources.",
-        "role": "endogenous",
-        "is_outcome": false,
-        "observability": "observed",
-        "temporal_status": "time_varying",
-        "causal_granularity": "daily",
-        "base_dtype": "count",
-        "aggregation": "sum"
-      },
-      {
-        "name": "language_tool_exploration",
-        "description": "Exploration of programming languages, paradigms, and tools (Haskell, Scala, OCaml, monads, functional programming). Indicates investment in foundational CS knowledge beyond immediate work needs.",
-        "role": "endogenous",
-        "is_outcome": false,
-        "observability": "observed",
-        "temporal_status": "time_varying",
-        "causal_granularity": "daily",
-        "base_dtype": "count",
-        "aggregation": "sum"
-      },
-      {
-        "name": "total_search_volume",
-        "description": "Overall volume of search/browsing activity regardless of type. Baseline engagement level - very low may indicate illness, vacation, or depression; very high indicates active day.",
-        "role": "endogenous",
-        "is_outcome": false,
-        "observability": "observed",
-        "temporal_status": "time_varying",
-        "causal_granularity": "daily",
-        "base_dtype": "count",
-        "aggregation": "sum"
-      },
-      {
-        "name": "is_weekend",
-        "description": "Whether the day is Saturday or Sunday. Affects time availability, work pressure, and opportunity for exploratory vs deadline-driven learning.",
-        "role": "exogenous",
-        "is_outcome": false,
-        "observability": "observed",
-        "temporal_status": "time_varying",
-        "causal_granularity": "daily",
-        "base_dtype": "binary",
-        "aggregation": "last"
-      },
-      {
-        "name": "cognitive_energy",
-        "description": "Available mental resources for demanding intellectual work. Latent capacity that enables or constrains deep technical engagement. Depleted by stress, poor sleep, sustained effort; restored by rest.",
-        "role": "endogenous",
-        "is_outcome": false,
-        "observability": "latent",
-        "temporal_status": "time_varying",
-        "causal_granularity": "daily",
-        "base_dtype": "continuous",
-        "aggregation": "mean"
-      },
-      {
-        "name": "learning_drive",
-        "description": "Active motivation to learn and explore technical topics beyond immediate job requirements. Intrinsic curiosity activation level - the urge to understand deeply rather than just solve and move on.",
-        "role": "endogenous",
-        "is_outcome": false,
-        "observability": "latent",
-        "temporal_status": "time_varying",
-        "causal_granularity": "daily",
-        "base_dtype": "continuous",
-        "aggregation": "mean"
-      },
-      {
-        "name": "mental_wellbeing",
-        "description": "Overall psychological health state. Evidence of mental health concerns in data (psychiatrist searches). Lower wellbeing reduces capacity for demanding cognitive work and intrinsic motivation.",
-        "role": "endogenous",
-        "is_outcome": false,
-        "observability": "latent",
-        "temporal_status": "time_varying",
-        "causal_granularity": "weekly",
-        "base_dtype": "continuous",
-        "aggregation": "mean"
-      },
-      {
-        "name": "health_seeking_activity",
-        "description": "Searches related to mental/physical health, doctors, psychiatrists, symptoms. Observable indicator of wellbeing concerns.",
-        "role": "endogenous",
-        "is_outcome": false,
-        "observability": "observed",
-        "temporal_status": "time_varying",
-        "causal_granularity": "weekly",
-        "base_dtype": "count",
-        "aggregation": "sum"
-      },
-      {
-        "name": "baseline_intellectual_curiosity",
-        "description": "Trait-level disposition toward intellectual exploration and understanding complex systems. Time-stable individual difference evident in consistent pattern of deep technical rabbit holes across years.",
-        "role": "exogenous",
-        "is_outcome": false,
-        "observability": "latent",
-        "temporal_status": "time_invariant",
-        "causal_granularity": null,
-        "base_dtype": "continuous",
-        "aggregation": null
-      },
-      {
-        "name": "mastery_orientation",
-        "description": "Trait-level preference for deep understanding and mastery over quick task completion. Orientation toward learning goals rather than performance goals. Stable personal characteristic.",
-        "role": "exogenous",
-        "is_outcome": false,
-        "observability": "latent",
-        "temporal_status": "time_invariant",
-        "causal_granularity": null,
-        "base_dtype": "continuous",
-        "aggregation": null
-      },
-      {
-        "name": "entrepreneurial_motivation",
-        "description": "Interest in startups, building products, resourcefulness. Observed in Y Combinator searches, Paul Graham readings, startup history. May compete with or complement pure technical mastery orientation.",
-        "role": "endogenous",
-        "is_outcome": false,
-        "observability": "observed",
-        "temporal_status": "time_varying",
-        "causal_granularity": "weekly",
-        "base_dtype": "count",
-        "aggregation": "sum"
-      }
-    ],
-    "edges": [
-      {
-        "cause": "cognitive_energy",
-        "effect": "deep_technical_exploration",
-        "description": "Deep technical rabbit holes require sustained cognitive resources. Low energy days see shallow browsing; high energy enables multi-hour focused exploration of complex topics.",
-        "lagged": false
-      },
-      {
-        "cause": "cognitive_energy",
-        "effect": "topic_coherence",
-        "description": "Mental energy enables sustained focus on a single domain. Depleted cognitive resources lead to scattered, jumping-around browsing patterns.",
-        "lagged": false
-      },
-      {
-        "cause": "cognitive_energy",
-        "effect": "work_debugging_activity",
-        "description": "Tackling hard debugging problems requires available mental resources. Low energy may lead to avoidance of difficult technical challenges.",
-        "lagged": false
-      },
-      {
-        "cause": "learning_drive",
-        "effect": "deep_technical_exploration",
-        "description": "Active curiosity motivates the pursuit of understanding beyond immediate needs. High learning drive leads to following citation chains, reading papers, exploring tangential concepts.",
-        "lagged": false
-      },
-      {
-        "cause": "learning_drive",
-        "effect": "academic_resource_engagement",
-        "description": "Motivation to truly understand drives seeking primary sources - papers, PhD theses, original research - rather than just blog posts and Stack Overflow.",
-        "lagged": false
-      },
-      {
-        "cause": "learning_drive",
-        "effect": "language_tool_exploration",
-        "description": "Interest in programming language theory and paradigms (Haskell, monads, referential transparency) stems from drive to understand computation deeply.",
-        "lagged": false
-      },
-      {
-        "cause": "topic_coherence",
-        "effect": "deep_technical_exploration",
-        "description": "Focused attention on a single domain enables deeper exploration. Coherent sessions build on each search; scattered sessions never reach depth.",
-        "lagged": false
-      },
-      {
-        "cause": "deep_technical_exploration",
-        "effect": "perceived_engineering_competence",
-        "description": "Successfully going deep on hard technical topics directly builds competence feelings. Understanding physical unclonable functions or monads creates mastery experience.",
-        "lagged": false
-      },
-      {
-        "cause": "academic_resource_engagement",
-        "effect": "perceived_engineering_competence",
-        "description": "Reading and understanding academic papers signals (to oneself) serious engineering capability. Engaging with research-level content builds identity as competent engineer.",
-        "lagged": false
-      },
-      {
-        "cause": "work_debugging_activity",
-        "effect": "problem_resolution_success",
-        "description": "Active debugging effort is prerequisite for resolution. More debugging activity increases likelihood of finding solutions.",
-        "lagged": false
-      },
-      {
-        "cause": "problem_resolution_success",
-        "effect": "perceived_engineering_competence",
-        "description": "Successfully solving real engineering problems directly builds competence feelings. The debugging-then-resolution cycle is core to engineering self-efficacy.",
-        "lagged": false
-      },
-      {
-        "cause": "language_tool_exploration",
-        "effect": "perceived_engineering_competence",
-        "description": "Understanding programming language theory and advanced paradigms builds deep competence. Knowing why Haskell needs monads for IO makes one feel like a serious engineer.",
-        "lagged": false
-      },
-      {
-        "cause": "morning_technical_activity",
-        "effect": "perceived_engineering_competence",
-        "description": "Technical work in morning hours, when cognitive resources peak, may be more effective for building competence feelings than late-night frustrated debugging.",
-        "lagged": false
-      },
-      {
-        "cause": "distraction_browsing",
-        "effect": "deep_technical_exploration",
-        "description": "Time spent on travel planning, entertainment searches displaces time available for deep technical work. Contemporaneous tradeoff within the day.",
-        "lagged": false
-      },
-      {
-        "cause": "is_weekend",
-        "effect": "cognitive_energy",
-        "description": "Weekends may restore cognitive resources through reduced work pressure. Or deplete them through different activities. Direction unclear but relationship exists.",
-        "lagged": false
-      },
-      {
-        "cause": "is_weekend",
-        "effect": "deep_technical_exploration",
-        "description": "Weekends provide uninterrupted time for exploratory learning without work deadlines. The PUF/blockchain exploration happened on a Friday-Saturday span.",
-        "lagged": false
-      },
-      {
-        "cause": "is_weekend",
-        "effect": "distraction_browsing",
-        "description": "Weekends naturally have more non-work browsing - travel planning, entertainment, leisure curiosity.",
-        "lagged": false
-      },
-      {
-        "cause": "mental_wellbeing",
-        "effect": "cognitive_energy",
-        "description": "Poor mental health depletes cognitive resources available for demanding work. Depression, anxiety reduce capacity for sustained intellectual effort.",
-        "lagged": true
-      },
-      {
-        "cause": "mental_wellbeing",
-        "effect": "learning_drive",
-        "description": "Mental wellbeing affects intrinsic motivation. Depression diminishes curiosity and interest in exploration; good mental health enables active learning drive.",
-        "lagged": true
-      },
-      {
-        "cause": "health_seeking_activity",
-        "effect": "mental_wellbeing",
-        "description": "Seeking mental health care (psychiatrist searches) may improve wellbeing over time, or high activity indicates current low wellbeing. Bidirectional indicator relationship.",
-        "lagged": false
-      },
-      {
-        "cause": "perceived_engineering_competence",
-        "effect": "learning_drive",
-        "description": "Feeling competent yesterday increases motivation to learn today. Success breeds engagement; incompetence feelings lead to avoidance.",
-        "lagged": true
-      },
-      {
-        "cause": "perceived_engineering_competence",
-        "effect": "distraction_browsing",
-        "description": "Low competence feelings lead to escape behavior - seeking distraction the next day. High competence creates positive engagement spiral.",
-        "lagged": true
-      },
-      {
-        "cause": "perceived_engineering_competence",
-        "effect": "cognitive_energy",
-        "description": "Competence feelings are energizing; feeling incompetent is exhausting. Yesterday's competence experience affects today's available cognitive resources.",
-        "lagged": true
-      },
-      {
-        "cause": "deep_technical_exploration",
-        "effect": "perceived_engineering_competence",
-        "description": "Cumulative learning effect - yesterday's deep exploration continues to build competence feelings today as knowledge consolidates.",
-        "lagged": true
-      },
-      {
-        "cause": "baseline_intellectual_curiosity",
-        "effect": "learning_drive",
-        "description": "Trait curiosity manifests as daily learning motivation. Stable disposition toward intellectual exploration activates situation-specific learning drive.",
-        "lagged": true
-      },
-      {
-        "cause": "baseline_intellectual_curiosity",
-        "effect": "deep_technical_exploration",
-        "description": "Curious people naturally engage in more deep technical exploration. The consistent rabbit-hole pattern across years reflects stable trait.",
-        "lagged": true
-      },
-      {
-        "cause": "baseline_intellectual_curiosity",
-        "effect": "academic_resource_engagement",
-        "description": "Trait curiosity drives seeking primary sources and academic materials rather than surface-level explanations.",
-        "lagged": true
-      },
-      {
-        "cause": "mastery_orientation",
-        "effect": "academic_resource_engagement",
-        "description": "Preference for deep understanding drives engagement with scholarly sources where real depth exists.",
-        "lagged": true
-      },
-      {
-        "cause": "mastery_orientation",
-        "effect": "topic_coherence",
-        "description": "Mastery-oriented individuals focus deeply on single domains rather than shallow breadth. Trait shapes daily attention patterns.",
-        "lagged": true
-      },
-      {
-        "cause": "mastery_orientation",
-        "effect": "language_tool_exploration",
-        "description": "Interest in programming language fundamentals reflects mastery orientation - wanting to understand computation itself, not just use tools.",
-        "lagged": true
-      },
-      {
-        "cause": "entrepreneurial_motivation",
-        "effect": "perceived_engineering_competence",
-        "description": "Interest in building products and startups may complement or compete with pure technical mastery as source of competence feelings.",
-        "lagged": true
-      },
-      {
-        "cause": "entrepreneurial_motivation",
-        "effect": "learning_drive",
-        "description": "Startup motivation may drive practical learning (what's needed to build) but potentially reduce pure intellectual exploration.",
-        "lagged": true
-      },
-      {
-        "cause": "work_debugging_activity",
-        "effect": "cognitive_energy",
-        "description": "Intense debugging sessions deplete cognitive resources. Heavy debugging today reduces available energy tomorrow.",
-        "lagged": true
-      },
-      {
-        "cause": "total_search_volume",
-        "effect": "deep_technical_exploration",
-        "description": "Higher overall activity level provides more opportunity for deep exploration to emerge. Baseline engagement is prerequisite for depth.",
-        "lagged": false
-      },
-      {
-        "cause": "mental_wellbeing",
-        "effect": "perceived_engineering_competence",
-        "description": "Poor mental health directly undermines competence feelings regardless of actual technical activity. Depression distorts self-perception.",
-        "lagged": true
-      }
-    ]
-  }
+  "dimensions": [
+    {
+      "name": "context_switch_count",
+      "description": "Number of times the browsing topic changes within the time window - the compulsive behavior to be understood and reduced",
+      "role": "endogenous",
+      "is_outcome": true,
+      "observability": "observed",
+      "how_to_measure": "For each consecutive pair of search/visit events, record 1 if the topic changed (different subject domain), 0 if same topic continued. Topic change = search terms or page content address unrelated subject matter (e.g., 'ketamine' to 'phone roaming' = 1, 'ketamine effects' to 'ketamine reddit' = 0).",
+      "temporal_status": "time_varying",
+      "causal_granularity": "hourly",
+      "measurement_dtype": "count",
+      "aggregation": "sum",
+      "_changed": "how_to_measure: clarified to specify raw binary observation per transition rather than requiring topic clustering algorithm"
+    },
+    {
+      "name": "novelty_craving_state",
+      "description": "Latent internal drive for new stimuli - the 'itch' that compels switching. Higher states create stronger urge to abandon current topic for something fresh.",
+      "role": "endogenous",
+      "is_outcome": false,
+      "observability": "latent",
+      "how_to_measure": null,
+      "temporal_status": "time_varying",
+      "causal_granularity": "hourly",
+      "measurement_dtype": "continuous",
+      "aggregation": "mean",
+      "_changed": "unchanged"
+    },
+    {
+      "name": "cognitive_depletion",
+      "description": "Latent mental fatigue/resource depletion that impairs ability to sustain focused attention. Higher depletion weakens self-control over switching impulses.",
+      "role": "endogenous",
+      "is_outcome": false,
+      "observability": "latent",
+      "how_to_measure": null,
+      "temporal_status": "time_varying",
+      "causal_granularity": "hourly",
+      "measurement_dtype": "continuous",
+      "aggregation": "mean",
+      "_changed": "unchanged"
+    },
+    {
+      "name": "goal_directedness",
+      "description": "Latent clarity and commitment to a specific browsing objective. High goal-directedness anchors attention; low creates aimless wandering vulnerability.",
+      "role": "endogenous",
+      "is_outcome": false,
+      "observability": "latent",
+      "how_to_measure": null,
+      "temporal_status": "time_varying",
+      "causal_granularity": "hourly",
+      "measurement_dtype": "continuous",
+      "aggregation": "mean",
+      "_changed": "unchanged"
+    },
+    {
+      "name": "search_action_count",
+      "description": "Total number of search queries initiated - captures overall browsing intensity and opportunities for switching",
+      "role": "endogenous",
+      "is_outcome": false,
+      "observability": "observed",
+      "how_to_measure": "For each event, record 1 if event type is [search], 0 otherwise.",
+      "temporal_status": "time_varying",
+      "causal_granularity": "hourly",
+      "measurement_dtype": "count",
+      "aggregation": "sum",
+      "_changed": "how_to_measure: clarified to specify per-event binary rather than pre-aggregated count"
+    },
+    {
+      "name": "topic_category",
+      "description": "The semantic topic domain of each browsing event - used to measure diversity of attention",
+      "role": "endogenous",
+      "is_outcome": false,
+      "observability": "observed",
+      "how_to_measure": "Assign each search/visit to one category from: {programming_technical, health_medical, travel_geography, food_cuisine, music_entertainment, news_politics, shopping_products, science_research, social_people, finance_business, language_translation, other}. Assign based on primary subject of search query or page content.",
+      "temporal_status": "time_varying",
+      "causal_granularity": "hourly",
+      "measurement_dtype": "categorical",
+      "aggregation": "n_unique",
+      "_changed": "renamed from topic_diversity_index; measurement_dtype: count→categorical; aggregation: n_unique (kept); how_to_measure: now specifies explicit category set"
+    },
+    {
+      "name": "topic_dwell_seconds",
+      "description": "Duration in seconds spent on each topic episode before switching to a different topic",
+      "role": "endogenous",
+      "is_outcome": false,
+      "observability": "observed",
+      "how_to_measure": "For each topic episode (consecutive events on same topic), record duration in seconds from first event timestamp to last event timestamp of that episode. Units: seconds.",
+      "temporal_status": "time_varying",
+      "causal_granularity": "hourly",
+      "measurement_dtype": "continuous",
+      "aggregation": "mean",
+      "_changed": "renamed from mean_topic_dwell_seconds; how_to_measure: removed 'Average across...' since aggregation handles averaging; clarified units"
+    },
+    {
+      "name": "inter_event_gap_minutes",
+      "description": "Time gap between consecutive browsing events - captures break durations",
+      "role": "endogenous",
+      "is_outcome": false,
+      "observability": "observed",
+      "how_to_measure": "For each pair of consecutive events, record the gap in minutes between timestamps. Units: minutes.",
+      "temporal_status": "time_varying",
+      "causal_granularity": "hourly",
+      "measurement_dtype": "continuous",
+      "aggregation": "max",
+      "_changed": "renamed from max_break_duration_minutes; how_to_measure: removed 'take maximum' since aggregation handles max selection; now describes raw per-gap measurement"
+    },
+    {
+      "name": "minute_is_active",
+      "description": "Whether a given minute contains any browsing activity",
+      "role": "endogenous",
+      "is_outcome": false,
+      "observability": "observed",
+      "how_to_measure": "For each minute in the time window, record 1 if at least one search/visit event occurred in that minute, 0 if no events.",
+      "temporal_status": "time_varying",
+      "causal_granularity": "hourly",
+      "measurement_dtype": "binary",
+      "aggregation": "sum",
+      "_changed": "renamed from session_active_minutes; measurement_dtype: continuous→binary; how_to_measure: clarified as per-minute binary observation that sums to active minutes"
+    },
+    {
+      "name": "event_is_technical",
+      "description": "Whether each browsing event involves technical/work content versus casual/entertainment content",
+      "role": "endogenous",
+      "is_outcome": false,
+      "observability": "observed",
+      "how_to_measure": "For each search/visit event, record 1 if content is technical (programming, documentation, research papers, technical wikis, work tools, APIs), 0 if non-technical (entertainment, social media, news, travel, food, music, casual browsing).",
+      "temporal_status": "time_varying",
+      "causal_granularity": "hourly",
+      "measurement_dtype": "binary",
+      "aggregation": "mean",
+      "_changed": "renamed from technical_content_ratio; measurement_dtype: continuous→binary; how_to_measure: removed 'Calculate ratio' since mean of binary yields proportion"
+    },
+    {
+      "name": "episode_is_quick_abandon",
+      "description": "Whether a topic episode was abandoned quickly (under 2 minutes) indicating impulsive micro-switching",
+      "role": "endogenous",
+      "is_outcome": false,
+      "observability": "observed",
+      "how_to_measure": "For each topic episode (consecutive events on same topic that ends with a switch to different topic), record 1 if total episode duration was less than 120 seconds, 0 if 120 seconds or longer.",
+      "temporal_status": "time_varying",
+      "causal_granularity": "hourly",
+      "measurement_dtype": "binary",
+      "aggregation": "sum",
+      "_changed": "renamed from quick_abandon_count; measurement_dtype: count→binary; how_to_measure: clarified as per-episode binary assessment"
+    },
+    {
+      "name": "hour_of_day",
+      "description": "Hour of the day (0-23) capturing circadian effects on attention, restlessness, and goal clarity",
+      "role": "exogenous",
+      "is_outcome": false,
+      "observability": "observed",
+      "how_to_measure": "Extract hour component from event timestamp. Categories: {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23}.",
+      "temporal_status": "time_varying",
+      "causal_granularity": "hourly",
+      "measurement_dtype": "categorical",
+      "aggregation": "first",
+      "_changed": "how_to_measure: added explicit category set (0-23)"
+    },
+    {
+      "name": "is_weekend",
+      "description": "Whether the day is Saturday or Sunday - weekends may have different browsing modes and goal structures",
+      "role": "exogenous",
+      "is_outcome": false,
+      "observability": "observed",
+      "how_to_measure": "Record 1 if event date falls on Saturday or Sunday, 0 if Monday through Friday.",
+      "temporal_status": "time_varying",
+      "causal_granularity": "daily",
+      "measurement_dtype": "binary",
+      "aggregation": "first",
+      "_changed": "how_to_measure: clarified what qualifies as 1 (weekend) vs 0 (weekday)"
+    },
+    {
+      "name": "prior_day_hourly_switches",
+      "description": "Context switch counts from each active hour of the previous day - captures habit momentum",
+      "role": "endogenous",
+      "is_outcome": false,
+      "observability": "observed",
+      "how_to_measure": "For each active hour of the previous calendar day, record that hour's context_switch_count value. Units: switches per hour.",
+      "temporal_status": "time_varying",
+      "causal_granularity": "daily",
+      "measurement_dtype": "continuous",
+      "aggregation": "mean",
+      "_changed": "renamed from prior_day_switch_intensity; how_to_measure: clarified that raw values are hourly switch counts from previous day, aggregation computes mean; added units"
+    }
+  ],
+  "edges": [
+    {
+      "cause": "novelty_craving_state",
+      "effect": "context_switch_count",
+      "description": "High novelty craving creates internal pressure to abandon current topic for fresh stimulation, directly driving switching behavior",
+      "lagged": false
+    },
+    {
+      "cause": "cognitive_depletion",
+      "effect": "context_switch_count",
+      "description": "Mental fatigue depletes self-control resources needed to resist switching impulses, leading to more compulsive topic changes",
+      "lagged": false
+    },
+    {
+      "cause": "goal_directedness",
+      "effect": "context_switch_count",
+      "description": "Clear browsing goals anchor attention and provide intrinsic motivation to stay on topic, reducing random switching",
+      "lagged": false
+    },
+    {
+      "cause": "search_action_count",
+      "effect": "context_switch_count",
+      "description": "Each search is an opportunity to switch topics; more searches create more potential branch points for impulsive switching",
+      "lagged": false
+    },
+    {
+      "cause": "context_switch_count",
+      "effect": "novelty_craving_state",
+      "description": "Each switch provides small dopamine hit from novelty, reinforcing the craving state - the core habit loop that makes switching compulsive",
+      "lagged": true
+    },
+    {
+      "cause": "hour_of_day",
+      "effect": "novelty_craving_state",
+      "description": "Circadian rhythms affect baseline restlessness; late night and afternoon slumps may increase novelty seeking",
+      "lagged": false
+    },
+    {
+      "cause": "hour_of_day",
+      "effect": "cognitive_depletion",
+      "description": "Time of day affects baseline energy and cognitive resources available for sustained attention",
+      "lagged": false
+    },
+    {
+      "cause": "hour_of_day",
+      "effect": "goal_directedness",
+      "description": "Work hours (morning/afternoon) may have clearer goals; evening browsing tends more exploratory",
+      "lagged": false
+    },
+    {
+      "cause": "minute_is_active",
+      "effect": "cognitive_depletion",
+      "description": "Sustained browsing without breaks progressively depletes attention resources and self-control capacity",
+      "lagged": false
+    },
+    {
+      "cause": "inter_event_gap_minutes",
+      "effect": "cognitive_depletion",
+      "description": "Longer breaks allow cognitive resources to recover, reducing depletion and restoring capacity for sustained focus",
+      "lagged": false
+    },
+    {
+      "cause": "event_is_technical",
+      "effect": "cognitive_depletion",
+      "description": "Technical content demands more cognitive effort, accelerating mental depletion compared to light browsing",
+      "lagged": false
+    },
+    {
+      "cause": "is_weekend",
+      "effect": "goal_directedness",
+      "description": "Weekdays often have work-related browsing goals; weekends have more aimless exploratory browsing patterns",
+      "lagged": true
+    },
+    {
+      "cause": "is_weekend",
+      "effect": "novelty_craving_state",
+      "description": "Weekend leisure mode may activate stronger novelty-seeking compared to weekday task-oriented mindset",
+      "lagged": true
+    },
+    {
+      "cause": "prior_day_hourly_switches",
+      "effect": "novelty_craving_state",
+      "description": "Yesterday's switching patterns establish habit momentum - high switching days prime craving for next day",
+      "lagged": true
+    },
+    {
+      "cause": "novelty_craving_state",
+      "effect": "search_action_count",
+      "description": "High novelty craving drives more frequent searches as person seeks next interesting thing",
+      "lagged": false
+    },
+    {
+      "cause": "goal_directedness",
+      "effect": "search_action_count",
+      "description": "Clear goals can increase focused searching, but also reduce aimless search volume",
+      "lagged": false
+    },
+    {
+      "cause": "novelty_craving_state",
+      "effect": "topic_category",
+      "description": "High craving drives exploration across many domains rather than depth in few",
+      "lagged": false
+    },
+    {
+      "cause": "goal_directedness",
+      "effect": "topic_category",
+      "description": "Strong goal focus constrains browsing to relevant topics, reducing diversity",
+      "lagged": false
+    },
+    {
+      "cause": "cognitive_depletion",
+      "effect": "topic_dwell_seconds",
+      "description": "Mental fatigue impairs ability to engage deeply with topics, reducing dwell time before attention wanders",
+      "lagged": false
+    },
+    {
+      "cause": "novelty_craving_state",
+      "effect": "topic_dwell_seconds",
+      "description": "High craving creates impatience with current topic, shortening engagement before seeking next stimulus",
+      "lagged": false
+    },
+    {
+      "cause": "goal_directedness",
+      "effect": "topic_dwell_seconds",
+      "description": "Clear purpose provides motivation to engage deeply with relevant content, extending dwell time",
+      "lagged": false
+    },
+    {
+      "cause": "novelty_craving_state",
+      "effect": "episode_is_quick_abandon",
+      "description": "High craving manifests as rapid sampling behavior - brief taste of topics before abandoning for next",
+      "lagged": false
+    },
+    {
+      "cause": "cognitive_depletion",
+      "effect": "episode_is_quick_abandon",
+      "description": "Depleted self-control leads to impulsive micro-switches without meaningful engagement",
+      "lagged": false
+    },
+    {
+      "cause": "goal_directedness",
+      "effect": "event_is_technical",
+      "description": "Work-related goals steer browsing toward technical content; aimless browsing drifts to entertainment",
+      "lagged": false
+    },
+    {
+      "cause": "episode_is_quick_abandon",
+      "effect": "context_switch_count",
+      "description": "Quick abandons directly contribute to switch count; pattern of micro-switches escalates overall switching",
+      "lagged": false
+    }
+  ]
+}
