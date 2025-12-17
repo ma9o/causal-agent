@@ -19,8 +19,8 @@ Be conservative—the orchestrator saw a sample and proposed the schema for good
 {
   "extractions": [
     {
-      "dimension": "name", 
-      "value": < value of the correct dataype >, 
+      "dimension": "name",
+      "value": < value of the correct dataype >,
       "timestamp": "ISO of the specified dimenion's granularity or null"
     }
   ],
@@ -35,6 +35,10 @@ Be conservative—the orchestrator saw a sample and proposed the schema for good
   ] | null
 }
 ```
+
+## Validation Tool
+
+You have access to `validate_extractions` tool. Use it to validate your JSON before returning the final answer. Keep validating until you get "VALID".
 """
 
 WORKER_USER = """\

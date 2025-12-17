@@ -66,6 +66,51 @@ def validate_dsem_structure():
     return execute
 
 
+def make_validate_worker_output_tool(schema: dict) -> Tool:
+    """Create a validation tool for worker output, bound to a specific schema.
+
+    Args:
+        schema: The DSEM schema dict to validate extractions against
+
+    Returns:
+        A tool function that validates worker output JSON
+    """
+
+    @tool
+    def validate_extractions():
+        """Tool for validating worker extraction output JSON."""
+
+        async def execute(output_json: str) -> str:
+            """
+            Validate worker extractions and return all validation errors.
+
+            Args:
+                output_json: The JSON string containing the worker output to validate.
+
+            Returns:
+                "VALID" if the output passes validation, otherwise a list of all errors found.
+            """
+            from causal_agent.workers.schemas import validate_worker_output
+
+            # Parse JSON first
+            try:
+                data = json.loads(output_json)
+            except json.JSONDecodeError as e:
+                return f"JSON parse error: {e}"
+
+            # Validate and collect all errors
+            output, errors = validate_worker_output(data, schema)
+
+            if not errors:
+                return "VALID"
+
+            return "VALIDATION ERRORS:\n" + "\n".join(f"- {e}" for e in errors)
+
+        return execute
+
+    return validate_extractions()
+
+
 async def multi_turn_generate(
     messages: list["ChatMessage"],
     model: Model,

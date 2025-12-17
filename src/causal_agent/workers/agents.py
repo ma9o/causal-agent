@@ -13,9 +13,9 @@ from inspect_ai.model import (
 )
 
 from causal_agent.utils.config import get_config
-from causal_agent.utils.llm import multi_turn_generate, parse_json_response
+from causal_agent.utils.llm import make_validate_worker_output_tool, multi_turn_generate, parse_json_response
 from .prompts import WORKER_SYSTEM, WORKER_USER
-from .schemas import WorkerOutput
+from .schemas import WorkerOutput, validate_worker_output
 
 # Load environment variables from .env file (for API keys)
 load_dotenv(Path(__file__).parent.parent.parent.parent / ".env")
@@ -114,11 +114,22 @@ async def process_chunk_async(
         ),
     ]
 
-    # Single-turn generation (no follow-ups for workers)
-    completion = await multi_turn_generate(messages=messages, model=model)
+    # Create validation tool bound to this schema
+    validation_tool = make_validate_worker_output_tool(schema)
+
+    # Generate with validation tool available
+    completion = await multi_turn_generate(
+        messages=messages,
+        model=model,
+        tools=[validation_tool],
+    )
     data = parse_json_response(completion)
 
-    output = WorkerOutput.model_validate(data)
+    # Final validation (should pass if LLM used the tool correctly)
+    output, errors = validate_worker_output(data, schema)
+    if errors:
+        # Fallback to Pydantic validation for error message
+        output = WorkerOutput.model_validate(data)
     dataframe = output.to_dataframe()
 
     return WorkerResult(output=output, dataframe=dataframe)
