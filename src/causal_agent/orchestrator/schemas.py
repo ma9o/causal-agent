@@ -143,6 +143,16 @@ class Dimension(BaseModel):
                     f"Invalid measurement_granularity '{self.measurement_granularity}' for '{self.name}'. "
                     f"Must be 'finest' or one of: {', '.join(sorted(GRANULARITY_HOURS.keys()))}"
                 )
+            # measurement_granularity must be finer than or equal to causal_granularity
+            # 'finest' is always valid (finer than any time-based granularity)
+            if self.measurement_granularity != "finest" and self.causal_granularity is not None:
+                measurement_hours = GRANULARITY_HOURS.get(self.measurement_granularity, 0)
+                causal_hours = GRANULARITY_HOURS.get(self.causal_granularity, 0)
+                if measurement_hours > causal_hours:
+                    raise ValueError(
+                        f"measurement_granularity '{self.measurement_granularity}' for '{self.name}' "
+                        f"must be finer than or equal to causal_granularity '{self.causal_granularity}'"
+                    )
 
         # Outcomes must be endogenous
         if self.is_outcome and self.role != Role.ENDOGENOUS:

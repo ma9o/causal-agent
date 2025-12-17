@@ -170,6 +170,54 @@ class TestDimension:
                 aggregation="mean",
             )
 
+    def test_measurement_granularity_must_be_finer_than_causal(self):
+        """measurement_granularity must be finer than or equal to causal_granularity."""
+        with pytest.raises(ValueError, match="must be finer than or equal to causal_granularity"):
+            Dimension(
+                name="mood",
+                description="Invalid",
+                role=Role.ENDOGENOUS,
+                observability=Observability.OBSERVED,
+                how_to_measure="Extract mood from data",
+                temporal_status=TemporalStatus.TIME_VARYING,
+                causal_granularity="daily",
+                measurement_granularity="weekly",  # coarser than daily - invalid
+                measurement_dtype="continuous",
+                aggregation="mean",
+            )
+
+    def test_measurement_granularity_equal_to_causal_is_valid(self):
+        """measurement_granularity equal to causal_granularity is valid."""
+        dim = Dimension(
+            name="mood",
+            description="Valid",
+            role=Role.ENDOGENOUS,
+            observability=Observability.OBSERVED,
+            how_to_measure="Extract mood from data",
+            temporal_status=TemporalStatus.TIME_VARYING,
+            causal_granularity="daily",
+            measurement_granularity="daily",  # equal is valid
+            measurement_dtype="continuous",
+            aggregation="mean",
+        )
+        assert dim.measurement_granularity == "daily"
+
+    def test_measurement_granularity_finer_than_causal_is_valid(self):
+        """measurement_granularity finer than causal_granularity is valid."""
+        dim = Dimension(
+            name="mood",
+            description="Valid",
+            role=Role.ENDOGENOUS,
+            observability=Observability.OBSERVED,
+            how_to_measure="Extract mood from data",
+            temporal_status=TemporalStatus.TIME_VARYING,
+            causal_granularity="daily",
+            measurement_granularity="hourly",  # finer than daily - valid
+            measurement_dtype="continuous",
+            aggregation="mean",
+        )
+        assert dim.measurement_granularity == "hourly"
+
     def test_time_invariant_forbids_aggregation(self):
         """Time-invariant variable must not have aggregation."""
         with pytest.raises(ValueError, match="Time-invariant .* must not have aggregation"):
