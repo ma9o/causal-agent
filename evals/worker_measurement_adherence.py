@@ -17,7 +17,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 import asyncio
 import json
 import random
-import yaml
 
 from inspect_ai import Task, task
 from inspect_ai.dataset import MemoryDataset, Sample
@@ -34,26 +33,21 @@ from causal_agent.workers.agents import (
 from causal_agent.utils.llm import make_worker_tools, multi_turn_generate, parse_json_response
 
 from evals.common import (
+    get_eval_questions,
     get_sample_chunks_worker,
+    load_eval_config,
     load_example_dag,
 )
 
 
-def load_eval_config() -> dict:
-    """Load the eval config.yaml file."""
-    config_path = Path(__file__).parent / "config.yaml"
-    with open(config_path) as f:
-        return yaml.safe_load(f)
-
-
 # Load config
-EVAL_CONFIG = load_eval_config()
+_CONFIG = load_eval_config()
 
 # Worker models to compete
-WORKER_MODELS = {m["id"]: m["alias"] for m in EVAL_CONFIG["worker_models"]}
+WORKER_MODELS = {m["id"]: m["alias"] for m in _CONFIG["worker_models"]}
 
 # Questions from config
-EVAL_QUESTIONS = EVAL_CONFIG["questions"]
+EVAL_QUESTIONS = get_eval_questions()
 
 
 JUDGE_SYSTEM = """\
