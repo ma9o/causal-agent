@@ -5,11 +5,11 @@ import re
 from pathlib import Path
 
 import yaml
-from inspect_ai.model import GenerateConfig, get_model
+from inspect_ai.model import get_model
 from inspect_ai.solver import Generate, TaskState, solver
 from inspect_ai.tool import Tool
 
-from causal_agent.utils.llm import multi_turn_generate
+from causal_agent.utils.llm import get_generate_config, multi_turn_generate
 from causal_agent.utils.data import (
     DATA_DIR,
     PROCESSED_DIR,
@@ -50,12 +50,7 @@ def tool_assisted_generate(
     def _solver():
         async def solve(state: TaskState, generate: Generate) -> TaskState:
             model = get_model()
-            config = GenerateConfig(
-                max_tokens=65536,
-                reasoning_effort="high",
-                reasoning_tokens=32768,
-                reasoning_history="all",  # Preserve reasoning across tool calls (required by Gemini)
-            )
+            config = get_generate_config()
 
             completion = await multi_turn_generate(
                 messages=list(state.messages),
