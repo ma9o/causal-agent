@@ -1,11 +1,12 @@
 """Inspect AI evaluation for aggregation function robustness.
 
 Tests the aggregate_worker_measurements function on N different sets of M chunks
-processed by workers from gemini-3-flash. Scores 1 if aggregation completes
-successfully, 0 if it raises an exception.
+processed by workers. Scores 1 if aggregation completes successfully, 0 if it
+raises an exception.
 
 This eval verifies that the aggregation pipeline can handle the diverse outputs
-produced by worker LLMs without breaking.
+produced by worker LLMs without breaking. Sets cycle through all 5 question-DAG
+pairs from config.yaml, testing each DAG with its corresponding question.
 
 Usage:
     inspect eval evals/eval4_aggregation_robustness.py --model google/vertex/gemini-3-flash-preview
@@ -38,13 +39,10 @@ from causal_agent.workers.agents import (
 from causal_agent.workers.schemas import WorkerOutput
 
 from evals.common import (
+    get_question_dag_pairs,
     get_sample_chunks_worker,
-    load_example_dag,
+    load_dag_by_question_id,
 )
-
-
-# Default question (matches example_dag.json)
-DEFAULT_QUESTION = "I want to sleep better"
 
 
 def create_eval_dataset(
@@ -52,26 +50,27 @@ def create_eval_dataset(
     chunks_per_set: int = 5,
     seed: int = 42,
     input_file: str | None = None,
-    question: str = DEFAULT_QUESTION,
 ) -> MemoryDataset:
     """Create evaluation dataset with chunk sets for aggregation testing.
 
     Each sample is a set of chunks that will be processed by workers and then
     aggregated together. The eval tests whether aggregation succeeds or fails.
 
+    Sets cycle through all available question-DAG pairs from config, ensuring
+    each DAG is tested with its corresponding question.
+
     Args:
         n_sets: Number of chunk sets (each becomes one aggregation test)
         chunks_per_set: Number of chunks per set (M workers processing M chunks)
         seed: Random seed for reproducible chunk sampling
         input_file: Specific input file name, or None for latest
-        question: The causal question to use
 
     Returns:
         MemoryDataset with one sample per chunk set
     """
-    schema = load_example_dag()
-    dimensions_text = _format_dimensions(schema)
-    outcome_description = _get_outcome_description(schema)
+    # Get all question-DAG pairs from config
+    question_dag_pairs = get_question_dag_pairs()
+    n_pairs = len(question_dag_pairs)
 
     # Get all chunks needed
     total_chunks = n_sets * chunks_per_set
@@ -79,6 +78,15 @@ def create_eval_dataset(
 
     samples = []
     for set_idx in range(n_sets):
+        # Cycle through question-DAG pairs
+        pair = question_dag_pairs[set_idx % n_pairs]
+        question_id = pair["id"]
+        question = pair["question"]
+        schema = load_dag_by_question_id(question_id)
+
+        dimensions_text = _format_dimensions(schema)
+        outcome_description = _get_outcome_description(schema)
+
         # Get chunks for this set
         start_idx = set_idx * chunks_per_set
         end_idx = start_idx + chunks_per_set
@@ -97,10 +105,11 @@ def create_eval_dataset(
 
         samples.append(
             Sample(
-                input=f"Aggregation test set {set_idx + 1} with {len(chunk_set)} chunks",
-                id=f"set_{set_idx:04d}",
+                input=f"Aggregation test set {set_idx + 1} (Q{question_id}: {question[:30]}...) with {len(chunk_set)} chunks",
+                id=f"set_{set_idx:04d}_q{question_id}",
                 metadata={
                     "set_index": set_idx,
+                    "question_id": question_id,
                     "chunk_prompts": chunk_prompts,
                     "chunks": chunk_set,
                     "question": question,
@@ -160,7 +169,8 @@ def aggregation_solver(worker_timeout: float = 300):
     @solver
     def _solver():
         async def solve(state: TaskState, generate: Generate) -> TaskState:
-            schema = load_example_dag()
+            question_id = state.metadata["question_id"]
+            schema = load_dag_by_question_id(question_id)
             question = state.metadata["question"]
             chunks = state.metadata["chunks"]
 
@@ -310,7 +320,6 @@ def aggregation_robustness_eval(
     chunks_per_set: int = 5,
     seed: int = 42,
     input_file: str | None = None,
-    question: str = DEFAULT_QUESTION,
     worker_timeout: int = 300,
 ):
     """Evaluate aggregation function robustness on worker outputs.
@@ -318,12 +327,14 @@ def aggregation_robustness_eval(
     Generates N sets of M chunks, processes each set through workers, and tests
     whether aggregate_worker_measurements handles the outputs without crashing.
 
+    Sets cycle through all question-DAG pairs from config (5 pairs), so with
+    n_sets=10, each DAG is tested twice with different data chunks.
+
     Args:
         n_sets: Number of aggregation tests (N)
         chunks_per_set: Chunks per test (M workers per test)
         seed: Random seed for chunk sampling
         input_file: Specific preprocessed file name, or None for latest
-        question: The causal question to use
         worker_timeout: Timeout in seconds for each worker (default: 300s)
     """
     return Task(
@@ -332,7 +343,6 @@ def aggregation_robustness_eval(
             chunks_per_set=chunks_per_set,
             seed=seed,
             input_file=input_file,
-            question=question,
         ),
         solver=[
             aggregation_solver(worker_timeout=worker_timeout),

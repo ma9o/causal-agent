@@ -47,7 +47,8 @@ data/
 ├── raw/           # Raw input data (gitignored)
 ├── processed/     # Converted text files (gitignored)
 ├── queries/       # Test queries for pipeline (committed)
-└── eval/          # Evaluation questions (committed)
+└── eval/          # Example DAGs for evals (committed)
+    └── example_dag{1-5}.json  # Each DAG matches a question in evals/config.yaml
 ```
 
 ### Preprocessing
@@ -156,7 +157,8 @@ causal-agent/
 │   ├── raw/                # Raw input data (gitignored)
 │   ├── processed/          # Converted text chunks (gitignored)
 │   ├── queries/            # Test queries for pipeline (committed)
-│   └── eval/               # Evaluation questions (committed)
+│   └── eval/               # Example DAGs for evals (committed)
+│       └── example_dag{1-5}.json  # Each DAG matches a question in evals/config.yaml
 ├── evals/
 │   ├── config.yaml                           # Shared eval configuration (models, questions)
 │   ├── common.py                             # Shared utilities for evals
