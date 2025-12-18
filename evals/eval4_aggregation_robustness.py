@@ -228,6 +228,10 @@ def aggregation_solver(worker_timeout: float = 300):
                     state.metadata["agg_shapes"] = {
                         k: (df.height, df.width) for k, df in agg_result.items()
                     }
+                    # Store dataframes as markdown tables for Inspect UI viewing
+                    state.metadata["aggregates"] = {
+                        k: df.to_pandas().to_markdown() for k, df in agg_result.items()
+                    }
                 except Exception as e:
                     agg_error = f"{type(e).__name__}: {e}\n{traceback.format_exc()}"
 
