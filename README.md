@@ -160,6 +160,7 @@ causal-agent/
 ├── evals/
 │   ├── config.yaml                       # Shared eval configuration (models, questions)
 │   ├── common.py                         # Shared utilities for evals
+│   ├── aggregation_robustness.py         # Inspect AI eval for aggregation function robustness
 │   ├── orchestrator_structure.py         # Inspect AI eval for structure proposals
 │   ├── worker_extraction.py              # Inspect AI eval for worker data extraction
 │   ├── worker_measurement_adherence.py   # Judge-based eval for measurement adherence
