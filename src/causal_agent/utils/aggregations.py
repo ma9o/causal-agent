@@ -214,9 +214,10 @@ def aggregate_worker_measurements(
         }
 
     # Parse timestamps - try multiple formats
+    # time_zone="UTC" handles timestamps with timezone info (e.g., +00:00 or Z suffix)
     combined = combined.with_columns(
         pl.col("timestamp")
-        .str.to_datetime(strict=False)
+        .str.to_datetime(strict=False, time_zone="UTC")
         .alias("parsed_ts")
     )
 
