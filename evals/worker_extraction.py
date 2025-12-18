@@ -4,8 +4,8 @@ Evaluates smaller LLMs on their ability to extract dimension values from
 data chunks given a schema from the orchestrator.
 
 Usage:
-    inspect eval evals/worker_extraction.py --model openrouter/google/gemini-2.0-flash-001
-    inspect eval evals/worker_extraction.py --model openrouter/anthropic/claude-sonnet-4
+    inspect eval evals/worker_extraction.py --model google/vertex/gemini-3-flash-preview
+    inspect eval evals/worker_extraction.py --model openrouter/anthropic/claude-haiku-4.5
 """
 
 import sys
@@ -37,12 +37,13 @@ from evals.common import (
     tool_assisted_generate,
 )
 
-# Worker models for parallel execution (via OpenRouter)
+# Worker models for parallel execution
 # Using reasoning-capable models with thinking budget
+# Note: Gemini 3 uses Vertex AI directly (not OpenRouter) for proper thought signature support
 MODELS = {
     "openrouter/moonshotai/kimi-k2-thinking": "kimi",
     "openrouter/deepseek/deepseek-v3.2-exp": "deepseek",
-    "openrouter/google/gemini-3-flash-preview": "gemini",
+    "google/vertex/gemini-3-flash-preview": "gemini",  # Vertex AI - requires GOOGLE_CLOUD_PROJECT, GOOGLE_CLOUD_LOCATION
     "openrouter/x-ai/grok-4.1-fast": "grok",
     "openrouter/anthropic/claude-haiku-4.5": "haiku",
     "openrouter/minimax/minimax-m2": "minimax",

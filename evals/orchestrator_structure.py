@@ -5,7 +5,7 @@ valid DSEM structures given a causal question and sample data chunks.
 
 Usage:
     inspect eval evals/orchestrator_structure.py --model openrouter/anthropic/claude-opus-4.5
-    inspect eval evals/orchestrator_structure.py --model openrouter/google/gemini-3-pro-preview-20251117
+    inspect eval evals/orchestrator_structure.py --model google/vertex/gemini-3-pro-preview
     inspect eval evals/orchestrator_structure.py --model openrouter/openai/gpt-5.1
     inspect eval evals/orchestrator_structure.py --model openrouter/deepseek/deepseek-v3.2
     inspect eval evals/orchestrator_structure.py --model openrouter/moonshotai/kimi-k2
@@ -42,11 +42,12 @@ from evals.common import (
     tool_assisted_generate,
 )
 
-# Top-tier models for orchestrator eval (via OpenRouter)
+# Top-tier models for orchestrator eval
 # Model ID -> short alias for CLI convenience
+# Note: Gemini 3 uses Vertex AI directly (not OpenRouter) for proper thought signature support
 MODELS = {
     "openrouter/anthropic/claude-opus-4.5": "claude",
-    "openrouter/google/gemini-3-pro-preview-20251117": "gemini",
+    "google/vertex/gemini-3-pro-preview": "gemini",  # Vertex AI - requires GOOGLE_CLOUD_PROJECT, GOOGLE_CLOUD_LOCATION
     "openrouter/openai/gpt-5.1": "gpt",
     "openrouter/deepseek/deepseek-v3.2": "deepseek",
     "openrouter/moonshotai/kimi-k2": "kimi",
