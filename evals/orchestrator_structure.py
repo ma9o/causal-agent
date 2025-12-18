@@ -32,26 +32,24 @@ from causal_agent.orchestrator.prompts import (
 )
 from causal_agent.orchestrator.scoring import _count_rule_points_detailed
 from causal_agent.orchestrator.schemas import DSEMStructure
-from causal_agent.utils.data import PROCESSED_DIR
 from causal_agent.utils.llm import validate_dsem_structure
 
 from evals.common import (
     extract_json_from_response,
     format_chunks,
+    get_eval_questions,
     get_sample_chunks_orchestrator,
+    load_eval_config,
     tool_assisted_generate,
 )
+
+# Load config for models
+_CONFIG = load_eval_config()
 
 # Top-tier models for orchestrator eval
 # Model ID -> short alias for CLI convenience
 # Note: Gemini 3 uses Vertex AI directly (not OpenRouter) for proper thought signature support
-MODELS = {
-    "openrouter/anthropic/claude-opus-4.5": "claude",
-    "google/vertex/gemini-3-pro-preview": "gemini",  # Vertex AI - requires GOOGLE_CLOUD_PROJECT, GOOGLE_CLOUD_LOCATION
-    "openrouter/openai/gpt-5.1": "gpt",
-    "openrouter/deepseek/deepseek-v3.2": "deepseek",
-    "openrouter/moonshotai/kimi-k2": "kimi",
-}
+MODELS = {m["id"]: m["alias"] for m in _CONFIG["orchestrator_models"]}
 
 
 @dataclass
@@ -60,27 +58,13 @@ class EvalQuestion:
 
     id: int
     question: str
-    difficulty: float
-    domain: str
-    primary_challenge: str
 
 
-def load_eval_questions() -> list[EvalQuestion]:
-    """Load evaluation questions from the JSON file."""
-    eval_file = PROCESSED_DIR.parent / "eval" / "orchestrator_eval_questions.json"
-
-    with open(eval_file) as f:
-        data = json.load(f)
-
+def load_questions() -> list[EvalQuestion]:
+    """Load evaluation questions from config."""
     return [
-        EvalQuestion(
-            id=q["id"],
-            question=q["question"],
-            difficulty=q["total_difficulty"],
-            domain=q["domain"],
-            primary_challenge=q["primary_challenge"],
-        )
-        for q in data["evaluation_questions"]
+        EvalQuestion(id=q["id"], question=q["question"])
+        for q in get_eval_questions()
     ]
 
 
@@ -99,7 +83,7 @@ def create_eval_dataset(
     Returns:
         MemoryDataset with samples for each question
     """
-    questions = load_eval_questions()
+    questions = load_questions()
 
     # Sample chunks (same for all questions for fair comparison)
     chunks = get_sample_chunks_orchestrator(n_chunks, seed, input_file)
@@ -120,9 +104,6 @@ def create_eval_dataset(
                 id=f"q{q.id}",
                 metadata={
                     "question": q.question,
-                    "difficulty": q.difficulty,
-                    "domain": q.domain,
-                    "primary_challenge": q.primary_challenge,
                     "n_chunks": n_chunks,
                     "seed": seed,
                 },
