@@ -20,17 +20,16 @@ import random
 
 from inspect_ai import Task, task
 from inspect_ai.dataset import MemoryDataset, Sample
-from inspect_ai.model import ChatMessageSystem, ChatMessageUser, GenerateConfig, get_model
+from inspect_ai.model import ChatMessageSystem, ChatMessageUser, get_model
 from inspect_ai.scorer import Score, Target, mean, scorer, stderr
-from inspect_ai.solver import Generate, TaskState, solver, system_message
+from inspect_ai.solver import Generate, TaskState, solver
 
 from causal_agent.workers.prompts import WORKER_SYSTEM, WORKER_USER
 from causal_agent.workers.agents import (
     _format_dimensions,
-    _get_observed_dimension_dtypes,
     _get_outcome_description,
 )
-from causal_agent.utils.llm import make_worker_tools, multi_turn_generate, parse_json_response
+from causal_agent.utils.llm import get_generate_config, make_worker_tools, multi_turn_generate, parse_json_response
 
 from evals.common import (
     get_eval_questions,
@@ -52,35 +51,10 @@ EVAL_QUESTIONS = get_eval_questions()
 
 JUDGE_SYSTEM = """\
 You are an expert evaluator assessing data extraction quality. You will be shown:
-1. A causal question
-2. A schema with measurement instructions for each dimension
-3. A data chunk
-4. Multiple candidate extractions from different models (labeled A, B, C, etc.)
+1. The exact prompt given to worker models (system and user messages)
+2. Multiple candidate extractions from different models (labeled A, B, C, etc.)
 
-Your task is to rank the candidates from best to worst based on how well they follow the measurement instructions.
-
-## Evaluation Criteria
-
-For each candidate, assess:
-
-1. **Instruction Adherence**: Did the model follow the `how_to_measure` instructions precisely?
-   - Did it use the correct time thresholds (e.g., 22:00 for late_night, 20:00 for evening)?
-   - Did it apply the correct matching rules (case-insensitive, correct keywords)?
-   - Did it handle edge cases as specified (e.g., cross-midnight attribution)?
-
-2. **Data Type Correctness**: Are values of the correct dtype?
-   - binary: 0 or 1
-   - count: non-negative integers
-   - continuous: decimal numbers
-   - categorical: strings
-
-3. **Timestamp Granularity**: Are timestamps at the correct granularity?
-   - daily: YYYY-MM-DD format
-   - hourly: YYYY-MM-DDTHH:00 format
-
-4. **Completeness**: Did the model extract data for all applicable dimensions present in the chunk?
-
-5. **Accuracy**: When you can verify against the raw data, are the extractions correct?
+Your task is to rank the candidates from best to worst based on how well they follow the instructions in the prompt.
 
 ## Output Format
 
@@ -102,23 +76,23 @@ The "winner" field should contain the label of the best candidate.
 """
 
 JUDGE_USER = """\
-## Causal Question
+## Worker Prompt
 
-{question}
+The following is the exact prompt given to the worker models:
 
-## Measurement Instructions
+### System Message
 
-{dimensions}
+{system_prompt}
 
-## Data Chunk
+### User Message
 
-{chunk}
+{user_prompt}
 
 ## Candidate Extractions
 
 {candidates}
 
-Please rank these candidates based on measurement instruction adherence and extraction quality.
+Please rank these candidates based on how well they followed the instructions in the worker prompt.
 """
 
 
@@ -149,12 +123,7 @@ async def generate_worker_output(
         ),
     ]
 
-    config = GenerateConfig(
-        max_tokens=65536,
-        reasoning_effort="high",
-        reasoning_tokens=32768,
-        reasoning_history="all",
-    )
+    config = get_generate_config()
 
     completion = await multi_turn_generate(
         messages=messages,
@@ -201,7 +170,7 @@ def create_eval_dataset(
     Each sample contains:
     - A question from the eval set
     - A data chunk
-    - Metadata with the question and chunk for worker generation
+    - Metadata with the full worker prompts for judge evaluation
 
     Args:
         n_chunks: Number of chunks per question
@@ -213,6 +182,7 @@ def create_eval_dataset(
     """
     schema = load_example_dag()
     dimensions_text = _format_dimensions(schema)
+    outcome_description = _get_outcome_description(schema)
 
     # Get chunks
     total_chunks = n_chunks * len(EVAL_QUESTIONS)
@@ -229,6 +199,14 @@ def create_eval_dataset(
             chunk = chunks[chunk_idx]
             chunk_idx += 1
 
+            # Build the full worker prompts that will be shown to the judge
+            worker_user_prompt = WORKER_USER.format(
+                question=q["question"],
+                outcome_description=outcome_description,
+                dimensions=dimensions_text,
+                chunk=chunk,
+            )
+
             # The input is the judge prompt template - actual content filled in by solver
             samples.append(
                 Sample(
@@ -239,7 +217,8 @@ def create_eval_dataset(
                         "question": q["question"],
                         "chunk": chunk,
                         "chunk_index": i,
-                        "dimensions_text": dimensions_text,
+                        "worker_system_prompt": WORKER_SYSTEM,
+                        "worker_user_prompt": worker_user_prompt,
                     },
                 )
             )
@@ -247,14 +226,19 @@ def create_eval_dataset(
     return MemoryDataset(samples)
 
 
-def judge_solver(model_ids: list[str] | None = None):
+def judge_solver(model_ids: list[str] | None = None, worker_timeout: float | None = None):
     """Solver that generates worker outputs and asks judge to rank them.
 
     Args:
         model_ids: List of model IDs to compete. If None, uses all worker models.
+        worker_timeout: Timeout in seconds for each worker. If None, uses config default.
     """
     if model_ids is None:
         model_ids = list(WORKER_MODELS.keys())
+
+    # Get timeout from config if not specified
+    if worker_timeout is None:
+        worker_timeout = _CONFIG.get("worker_timeout_seconds", 180)
 
     @solver
     def _solver():
@@ -262,14 +246,20 @@ def judge_solver(model_ids: list[str] | None = None):
             schema = load_example_dag()
             question = state.metadata["question"]
             chunk = state.metadata["chunk"]
-            dimensions_text = state.metadata["dimensions_text"]
+            worker_system_prompt = state.metadata["worker_system_prompt"]
+            worker_user_prompt = state.metadata["worker_user_prompt"]
 
             # Generate outputs from all competing models in parallel
             async def safe_generate(model_id: str) -> tuple[str, str]:
-                """Generate with error handling, returns (model_id, result)."""
+                """Generate with error handling and timeout, returns (model_id, result)."""
                 try:
-                    result = await generate_worker_output(model_id, chunk, question, schema)
+                    result = await asyncio.wait_for(
+                        generate_worker_output(model_id, chunk, question, schema),
+                        timeout=worker_timeout,
+                    )
                     return model_id, result
+                except asyncio.TimeoutError:
+                    return model_id, f"[TIMEOUT: Worker did not finish within {worker_timeout}s]"
                 except Exception as e:
                     return model_id, f"[ERROR: {e}]"
 
@@ -290,11 +280,10 @@ def judge_solver(model_ids: list[str] | None = None):
             state.metadata["label_map"] = label_map
             state.metadata["reverse_label_map"] = {v: k for k, v in label_map.items()}
 
-            # Build judge prompt
+            # Build judge prompt with full worker prompts
             judge_prompt = JUDGE_USER.format(
-                question=question,
-                dimensions=dimensions_text,
-                chunk=chunk,
+                system_prompt=worker_system_prompt,
+                user_prompt=worker_user_prompt,
                 candidates=candidates_text,
             )
 
@@ -306,11 +295,7 @@ def judge_solver(model_ids: list[str] | None = None):
 
             # Generate judge response
             judge_model = get_model()
-            config = GenerateConfig(
-                max_tokens=4096,
-                temperature=0.0,  # Deterministic judging
-            )
-            response = await judge_model.generate(state.messages, config=config)
+            response = await judge_model.generate(state.messages, config=get_generate_config())
             state.output.completion = response.completion
 
             return state
@@ -322,10 +307,10 @@ def judge_solver(model_ids: list[str] | None = None):
 
 @scorer(metrics=[mean(), stderr()])
 def measurement_adherence_scorer():
-    """Score based on which model won the judge ranking.
+    """Score based on judge ranking of model outputs.
 
     Returns:
-        - The alias of the winning model as a categorical score
+        - Full ranking as "best > 2nd > 3rd > ..." in the answer field
         - Score value is 1.0 if parsing succeeded, 0.0 otherwise
     """
 
@@ -357,32 +342,32 @@ def measurement_adherence_scorer():
                 explanation=f"Error: {e}\nResponse: {completion[:500]}...",
             )
 
-        # Map winner label back to model
-        winner_model = reverse_label_map.get(winner_label, "unknown")
-        winner_alias = WORKER_MODELS.get(winner_model, winner_model)
-
-        # Build ranking with model names
-        ranking_with_names = []
+        # Build ranking with model aliases
+        ranking_aliases = []
         for label in ranking:
             model_id = reverse_label_map.get(label, "unknown")
             alias = WORKER_MODELS.get(model_id, model_id)
-            ranking_with_names.append(f"{label}={alias}")
+            ranking_aliases.append(alias)
 
-        explanation = (
-            f"Winner: {winner_alias}\n"
-            f"Full ranking: {', '.join(ranking_with_names)}\n"
-            f"Rationale for winner: {rationale.get(winner_label, 'N/A')}"
-        )
+        # Format as "1st > 2nd > 3rd > ..."
+        ranking_str = " > ".join(ranking_aliases)
+
+        # Build rationale summary
+        rationale_parts = []
+        for label in ranking:
+            model_id = reverse_label_map.get(label, "unknown")
+            alias = WORKER_MODELS.get(model_id, model_id)
+            rationale_parts.append(f"{alias}: {rationale.get(label, 'N/A')}")
+
+        explanation = "\n".join(rationale_parts)
 
         return Score(
             value=1.0,  # Successfully parsed
-            answer=winner_alias,
+            answer=ranking_str,
             explanation=explanation,
             metadata={
-                "winner_model": winner_model,
-                "winner_alias": winner_alias,
-                "ranking": ranking,
-                "ranking_with_names": ranking_with_names,
+                "ranking_aliases": ranking_aliases,
+                "ranking_labels": ranking,
                 "rationale": rationale,
             },
         )
@@ -396,17 +381,19 @@ def worker_measurement_adherence_eval(
     seed: int = 42,
     input_file: str | None = None,
     models: str | None = None,
+    worker_timeout: int | None = None,
 ):
     """Evaluate worker models on measurement instruction adherence.
 
     A judge model ranks competing worker outputs without knowing model names.
-    Returns the winning model alias as the score.
+    Returns the full ranking (e.g., "gemini > kimi > haiku") as the score answer.
 
     Args:
         n_chunks: Number of chunks per question (total samples = n_chunks * 5 questions)
         seed: Random seed for chunk sampling
         input_file: Specific preprocessed file name, or None for latest
         models: Comma-separated model IDs to compete, or None for all
+        worker_timeout: Timeout in seconds for each worker (default: from config, 180s)
     """
     # Parse models argument
     model_ids = None
@@ -416,7 +403,7 @@ def worker_measurement_adherence_eval(
     return Task(
         dataset=create_eval_dataset(n_chunks=n_chunks, seed=seed, input_file=input_file),
         solver=[
-            judge_solver(model_ids=model_ids),
+            judge_solver(model_ids=model_ids, worker_timeout=worker_timeout),
         ],
         scorer=measurement_adherence_scorer(),
     )
