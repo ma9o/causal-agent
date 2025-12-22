@@ -33,7 +33,7 @@ def populate_dimensions(chunk: str, question: str, schema: dict) -> WorkerResult
 
     Returns:
         WorkerResult containing:
-        - output: Validated WorkerOutput with extractions and proposed dimensions
+        - output: Validated WorkerOutput with extractions
         - dataframe: Polars DataFrame with columns (dimension, value, timestamp)
     """
     return process_chunk(chunk, question, schema)

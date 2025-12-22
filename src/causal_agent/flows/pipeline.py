@@ -76,7 +76,7 @@ def causal_inference_pipeline(
         else:
             print(f"  {granularity}: {df.height} time points × {n_dims} dimensions")
 
-    # TODO: Stage 2c - Merge proposed dimensions from workers
+    # TODO: Stage 2c - Merge proposed dimensions from workers (disabled, proved brittle)
 
     # Stage 3: Identifiability
     identifiable = check_identifiability(schema["dag"], target_effects)
