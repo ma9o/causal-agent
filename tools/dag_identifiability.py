@@ -4,11 +4,11 @@ Interactive DAG Builder with DoWhy Identifiability Analysis.
 Run with: uv run streamlit run tools/dag_identifiability.py
 """
 
-import json
 from io import BytesIO
 
 import networkx as nx
 import streamlit as st
+import streamlit.components.v1 as components
 from dowhy import CausalModel
 from streamlit_agraph import Config, Edge, Node, agraph
 
@@ -63,9 +63,21 @@ COLORS = {
 def init_session_state():
     """Initialize session state for nodes and edges."""
     if "nodes" not in st.session_state:
-        st.session_state.nodes = {}  # name -> {"observed": bool}
+        st.session_state.nodes = {
+            "A": {"observed": True},
+            "B": {"observed": True},
+            "C": {"observed": True},
+            "D": {"observed": True},
+            "U": {"observed": False},
+        }
     if "edges" not in st.session_state:
-        st.session_state.edges = []  # list of (cause, effect)
+        st.session_state.edges = [
+            ("A", "B"),
+            ("B", "C"),
+            ("U", "B"),
+            ("U", "C"),
+            ("U", "D"),
+        ]
     if "treatment" not in st.session_state:
         st.session_state.treatment = None
     if "outcome" not in st.session_state:
@@ -247,48 +259,101 @@ def run_identify_effect() -> tuple[str | None, str | None]:
         return None, str(e)
 
 
-def export_dag() -> str:
-    """Export DAG to JSON format."""
-    data = {
-        "nodes": [
-            {"name": name, "observed": props["observed"]}
-            for name, props in st.session_state.nodes.items()
-        ],
-        "edges": [{"cause": c, "effect": e} for c, e in st.session_state.edges],
-        "treatment": st.session_state.treatment,
-        "outcome": st.session_state.outcome,
-    }
-    return json.dumps(data, indent=2)
+def generate_mermaid_spec() -> str:
+    """Generate Mermaid flowchart spec from current DAG state."""
+    lines = ["graph TD"]
+
+    treatment = st.session_state.treatment
+    outcome = st.session_state.outcome
+
+    # Add node style definitions
+    for name, props in st.session_state.nodes.items():
+        if name == treatment:
+            lines.append(f"    {name}[{name}]:::treatment")
+        elif name == outcome:
+            lines.append(f"    {name}[{name}]:::outcome")
+        elif props["observed"]:
+            lines.append(f"    {name}[{name}]:::observed")
+        else:
+            lines.append(f"    {name}({name}):::unobserved")
+
+    # Add edges
+    for cause, effect in st.session_state.edges:
+        lines.append(f"    {cause} --> {effect}")
+
+    # Add style classes
+    lines.append("")
+    lines.append("    classDef treatment fill:#3fb950,stroke:#238636,color:#fff")
+    lines.append("    classDef outcome fill:#a371f7,stroke:#8957e5,color:#fff")
+    lines.append("    classDef observed fill:#58a6ff,stroke:#388bfd,color:#fff")
+    lines.append("    classDef unobserved fill:#8b949e66,stroke:#8b949e,color:#fff,stroke-dasharray: 5 5")
+
+    return "\n".join(lines)
 
 
-def import_dag(json_str: str) -> tuple[bool, str]:
-    """Import DAG from JSON format."""
+def parse_mermaid_spec(spec: str) -> tuple[bool, str]:
+    """Parse Mermaid spec and update DAG state."""
+    import re
+
     try:
-        data = json.loads(json_str)
+        lines = spec.strip().split("\n")
 
-        # Clear current state
-        st.session_state.nodes = {}
-        st.session_state.edges = []
-        st.session_state.treatment = None
-        st.session_state.outcome = None
+        new_nodes = {}
+        new_edges = []
+        new_treatment = None
+        new_outcome = None
 
-        # Import nodes
-        for node in data.get("nodes", []):
-            st.session_state.nodes[node["name"]] = {
-                "observed": node.get("observed", True)
-            }
+        for line in lines:
+            line = line.strip()
 
-        # Import edges
-        for edge in data.get("edges", []):
-            st.session_state.edges.append((edge["cause"], edge["effect"]))
+            # Skip empty lines, graph declaration, and classDef lines
+            if not line or line.startswith("graph") or line.startswith("classDef"):
+                continue
 
-        # Import treatment/outcome
-        st.session_state.treatment = data.get("treatment")
-        st.session_state.outcome = data.get("outcome")
+            # Parse edge: A --> B
+            edge_match = re.match(r"(\w+)\s*-->\s*(\w+)", line)
+            if edge_match:
+                cause, effect = edge_match.groups()
+                new_edges.append((cause, effect))
+                # Ensure both nodes exist
+                if cause not in new_nodes:
+                    new_nodes[cause] = {"observed": True}
+                if effect not in new_nodes:
+                    new_nodes[effect] = {"observed": True}
+                continue
 
-        return True, "Import successful"
+            # Parse node with class: Name[Name]:::class or Name(Name):::class
+            node_match = re.match(r"(\w+)[\[\(]([^\]\)]+)[\]\)](?:::(\w+))?", line)
+            if node_match:
+                name, _label, node_class = node_match.groups()
+
+                # Determine observed status from shape (parentheses = unobserved)
+                is_unobserved = "(" in line and ")" in line and "[" not in line
+                observed = not is_unobserved
+
+                # Override with class if specified
+                if node_class == "unobserved":
+                    observed = False
+                elif node_class in ("observed", "treatment", "outcome"):
+                    observed = True
+
+                new_nodes[name] = {"observed": observed}
+
+                if node_class == "treatment":
+                    new_treatment = name
+                elif node_class == "outcome":
+                    new_outcome = name
+                continue
+
+        # Update session state
+        st.session_state.nodes = new_nodes
+        st.session_state.edges = new_edges
+        st.session_state.treatment = new_treatment
+        st.session_state.outcome = new_outcome
+
+        return True, ""
     except Exception as e:
-        return False, f"Import failed: {str(e)}"
+        return False, str(e)
 
 
 # =============================================================================
@@ -374,20 +439,31 @@ with col_edit:
 
     st.markdown("---")
 
-    # Import/Export
-    st.markdown("**Import/Export**")
-    with st.expander("Import JSON"):
-        import_json = st.text_area("Paste JSON", key="import_json", height=100)
-        if st.button("Import"):
-            success, msg = import_dag(import_json)
-            if success:
-                st.success(msg)
-                st.rerun()
-            else:
-                st.error(msg)
+    # Live Mermaid editor
+    st.markdown("**Mermaid Spec**")
 
-    if st.button("Export JSON", use_container_width=True):
-        st.code(export_dag(), language="json")
+    # Generate current spec from DAG state
+    current_spec = generate_mermaid_spec() if st.session_state.nodes else "graph TD"
+
+    # Use a dynamic key based on DAG state to force text_area refresh
+    nodes_tuple = tuple((k, v["observed"]) for k, v in sorted(st.session_state.nodes.items()))
+    dag_key = hash((nodes_tuple, tuple(st.session_state.edges),
+                    st.session_state.treatment, st.session_state.outcome))
+
+    edited_spec = st.text_area(
+        "Edit Mermaid",
+        value=current_spec,
+        height=200,
+        key=f"mermaid_editor_{dag_key}",
+        label_visibility="collapsed",
+    )
+
+    if st.button("Apply Mermaid", use_container_width=True):
+        success, error = parse_mermaid_spec(edited_spec)
+        if success:
+            st.rerun()
+        else:
+            st.error(f"Parse error: {error}")
 
 with col_graph:
     st.subheader("Graph")
@@ -399,29 +475,107 @@ with col_graph:
             width="100%",
             height=400,
             directed=True,
-            hierarchical=True,
-            levelSeparation=100,
-            nodeSpacing=120,
-            treeSpacing=150,
-            physics=False,
+            physics=True,
             nodeHighlightBehavior=True,
             highlightColor="#f0f6fc",
+            interaction={"zoomView": False},
         )
 
         agraph(nodes=nodes, edges=edges, config=config)
 
-        # Legend
-        st.markdown(
+        # Legend and copy button
+        col_legend, col_copy = st.columns([3, 1])
+        with col_legend:
+            st.markdown(
+                """
+                <div style="font-size: 11px; color: #8b949e; margin-top: 8px;">
+                    <span style="color: #3fb950;">■</span> Treatment &nbsp;
+                    <span style="color: #a371f7;">■</span> Outcome &nbsp;
+                    <span style="color: #58a6ff;">■</span> Observed &nbsp;
+                    <span style="color: #8b949e;">◯</span> Unobserved (dashed)
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+        with col_copy:
+            copy_js = """
+            <style>
+            .copy-btn {
+                background: #238636;
+                color: white;
+                border: none;
+                padding: 4px 12px;
+                border-radius: 6px;
+                cursor: pointer;
+                font-size: 12px;
+                transition: all 0.2s ease;
+            }
+            .copy-btn.success {
+                background: #1f6feb;
+                transform: scale(1.05);
+            }
+            .copy-btn.error {
+                background: #da3633;
+            }
+            </style>
+            <button id="copyBtn" class="copy-btn" onclick="copyGraph()">📋 Copy</button>
+            <script>
+            async function copyGraph() {
+                const btn = document.getElementById('copyBtn');
+                const originalText = btn.innerHTML;
+
+                // Search up through parent frames to find all iframes
+                let root = window;
+                while (root.parent && root.parent !== root) {
+                    root = root.parent;
+                }
+                const iframes = root.document.querySelectorAll('iframe');
+                let canvas = null;
+                for (const iframe of iframes) {
+                    try {
+                        canvas = iframe.contentDocument.querySelector('canvas');
+                        if (canvas) break;
+                    } catch (e) {}
+                }
+                if (!canvas) {
+                    btn.innerHTML = '❌ Not found';
+                    btn.classList.add('error');
+                    setTimeout(() => {
+                        btn.innerHTML = originalText;
+                        btn.classList.remove('error');
+                    }, 1500);
+                    return;
+                }
+                try {
+                    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+                    await navigator.clipboard.write([
+                        new ClipboardItem({'image/png': blob})
+                    ]);
+                    btn.innerHTML = '✓ Copied!';
+                    btn.classList.add('success');
+                    setTimeout(() => {
+                        btn.innerHTML = originalText;
+                        btn.classList.remove('success');
+                    }, 1500);
+                } catch (err) {
+                    // Fallback: download
+                    const link = root.document.createElement('a');
+                    link.download = 'dag.png';
+                    link.href = canvas.toDataURL('image/png');
+                    root.document.body.appendChild(link);
+                    link.click();
+                    root.document.body.removeChild(link);
+                    btn.innerHTML = '✓ Downloaded!';
+                    btn.classList.add('success');
+                    setTimeout(() => {
+                        btn.innerHTML = originalText;
+                        btn.classList.remove('success');
+                    }, 1500);
+                }
+            }
+            </script>
             """
-            <div style="font-size: 11px; color: #8b949e; margin-top: 8px;">
-                <span style="color: #3fb950;">■</span> Treatment &nbsp;
-                <span style="color: #a371f7;">■</span> Outcome &nbsp;
-                <span style="color: #58a6ff;">■</span> Observed &nbsp;
-                <span style="color: #8b949e;">◯</span> Unobserved (dashed)
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+            components.html(copy_js, height=35)
 
         # Show identify_effect result if available
         if "identify_result" in st.session_state:
