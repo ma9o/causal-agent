@@ -23,5 +23,5 @@ The following must hold for a valid `DSEMStructure`:
 4. **Contemporaneous same-scale only:** If `lag=0`, cause and effect must have identical `causal_granularity`
 5. **Same-scale lag constraint (Markov):** If cause and effect have identical `causal_granularity` and `lag > 0`, lag must equal exactly one granularity unit in hours
 6. **Cross-scale lag constraint (Markov):** If cause and effect have different `causal_granularity`, `lag` must equal exactly `max(cause_granularity, effect_granularity)` in hours
-7. **Aggregation requirement (edges):** If cause `causal_granularity` is finer than effect `causal_granularity`, `aggregation` must be specified
-8. **Aggregation prohibition (edges):** If cause `causal_granularity` is coarser or equal to effect `causal_granularity`, `aggregation` must be `None`
+7. **Aggregation requirement:** If cause `causal_granularity` is finer than effect `causal_granularity`, the cause dimension must have `aggregation` defined (non-None)
+8. **Aggregation usage:** If cause `causal_granularity` is coarser or equal to effect `causal_granularity`, the cause dimension's `aggregation` is not applied (no validation required)
