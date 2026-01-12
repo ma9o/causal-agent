@@ -206,7 +206,8 @@ causal-agent/
 │   ├── dag_visualizer.html  # (legacy) Static HTML DAG viewer
 │   └── read_eval_log.py     # Inspect eval log reader CLI
 ├── docs/
-│   └── dsem_spec.md         # DSEM specification
+│   ├── dsem_spec.md              # DSEM specification
+│   └── modeling_assumptions.md   # Core modeling assumptions (A1-A7)
 └── config.yaml              # Pipeline configuration (models, params)
 ```
 

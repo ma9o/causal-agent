@@ -2,7 +2,7 @@
 
 ## Scope
 
-This framework models dynamics of **observed** time-varying constructs with optional time-invariant covariates and random effects. All time-varying constructs must be directly measured. The framework does not support latent state-space models (see Exclusions).
+This framework models dynamics of time-varying constructs with optional time-invariant covariates and random effects. Time-varying constructs may be **latent** provided they have observed indicators (reflective measurement model). The framework does not support latent state-space models where latent states have no indicators (see Exclusions).
 
 ---
 
@@ -24,6 +24,9 @@ Variables are classified along three dimensions:
 | 2 | Exogenous | Observed | Time-invariant | Age, gender, treatment arm | Between-person covariates |
 | 4 | Exogenous | Latent | Time-invariant | Person-specific intercept | Random effects for heterogeneity |
 | 5 | Endogenous | Observed | Time-varying | Daily mood, sleep quality | Core dynamic system |
+| 7* | Endogenous | Latent | Time-varying | Stress (with indicators: HRV, cortisol) | Latent constructs with reflective indicators |
+
+*Type 7 requires observed indicators via a reflective measurement model. See "Latent Time-Varying Constructs" below.
 
 ---
 
@@ -33,7 +36,36 @@ Variables are classified along three dimensions:
 
 **Latent** means no direct data whatsoever. Random effects are identified purely from the variance structure of repeated observations—no proxy, no indicator, no measurement. They capture stable between-person heterogeneity that we infer exists but never directly observe.
 
-The excluded latent types (Types 3, 7, 8) require either multiple indicators or strong structural assumptions for identification. If you theorize an unobserved construct, use the best available proxy and acknowledge the measurement limitation in interpretation.
+The excluded latent types (Types 3, 8, and state-space Type 7) require strong structural assumptions for identification. Type 7 with reflective indicators IS supported—see below.
+
+---
+
+## Latent Time-Varying Constructs (Type 7 with Indicators)
+
+Latent time-varying constructs are supported when operationalized through a **reflective measurement model**. This means:
+
+1. The latent construct has one or more observed indicators
+2. Causality flows from latent → indicators (not reverse)
+3. Indicators are interchangeable manifestations of the underlying construct
+
+**Example:**
+```
+Latent "stress" (daily) ──→ observed "self_reported_stress"
+                        ├──→ observed "heart_rate_variability"
+                        └──→ observed "cortisol_level"
+```
+
+**Two-Stage Specification:**
+- **Stage 1a (Latent Model):** LLM proposes theoretical constructs and causal structure from domain knowledge alone (no data). All constructs are tagged as latent.
+- **Stage 1b (Measurement Model):** LLM sees data and operationalizes each latent into observed indicators. All outputs are tagged as observed.
+
+**What this enables:**
+- Modeling theoretical constructs that aren't directly measurable
+- Multiple imperfect measurements of the same underlying construct
+- Separation of measurement error from true construct variance (via factor model)
+
+**What this does NOT enable:**
+- State-space models where latent states have no indicators (see Exclusions)
 
 ---
 
@@ -67,15 +99,19 @@ An unobserved external shock varying over time. Excluded because identification 
 
 A single-occasion outcome. Not a dynamic modeling problem—use standard SEM. Mixing paradigms adds complexity without benefit.
 
-### Type 7: Endogenous, Latent, Time-varying
+### Type 7 (State-Space): Endogenous, Latent, Time-varying WITHOUT Indicators
 
-A latent state with its own dynamics (state-space / Kalman filter territory). Excluded because proper specification requires:
+A latent state with its own dynamics but NO observed indicators (pure state-space / Kalman filter territory). Excluded because proper specification requires:
 
 - Prior on initial state distribution
 - Prior on process variance (latent state evolution noise)
 - Prior on measurement variance (observation noise)
 
-These parameters interact non-trivially. Process and measurement variance are notoriously difficult to disentangle without either multiple indicators or strong domain-informed priors. An automated framework cannot reliably specify these. Users requiring latent dynamics should use specialized state-space tools (e.g., PyMC, Stan) with expert-specified priors.
+These parameters interact non-trivially. Process and measurement variance are notoriously difficult to disentangle without multiple indicators or strong domain-informed priors. An automated framework cannot reliably specify these.
+
+**Note:** Type 7 WITH reflective indicators IS supported—see "Latent Time-Varying Constructs" section above. The distinction is:
+- **Supported:** Latent "stress" → observed indicators [HRV, cortisol, self-report]. Identified via factor model.
+- **Excluded:** Latent "true_mood" with no indicators, identified only through temporal dynamics. Requires state-space machinery.
 
 ### Type 8: Endogenous, Latent, Time-invariant
 
