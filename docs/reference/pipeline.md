@@ -2,15 +2,17 @@
 
 ## Overview
 
-[1] Global Hypothesis (Orchestrator): We feed a small data sample to the Orchestrator LLM to generate a structural "prior." It establishes the Global Vibe: proposing a candidate structural-only DAG, defining the dimensions to extract, and setting the time granularity based on the user's question.
+**[1a] Latent Model (Orchestrator):** Given only the user's question (no data), the Orchestrator LLM proposes a theoretical causal structure based on domain knowledge. It walks backwards from the implied outcome: what causes Y? What causes those? Output: latent constructs with causal edges. This separates theoretical reasoning from data-driven operationalization.
 
-[2] Distributed Discovery (Workers): Worker LLMs process the full dataset in parallel chunks, extracting data for the proposed dimensions. (Future: workers may also critique the global graph based on local evidence, suggesting new confounders found only in specific chunks. The Orchestrator would then reconcile these structural suggestions into a unified model. Currently disabled—measurement extraction is the priority.)
+**[1b] Measurement Model (Orchestrator):** Given the latent structure and a data sample, the Orchestrator operationalizes each latent construct into observed indicators. For each latent, it proposes: `how_to_measure` instructions, `measurement_dtype`, `measurement_granularity`, and `aggregation`. One latent may map to multiple indicators (1:N reflective measurement model). Output: full DSEMStructure.
 
-[3] The orchestrator then runs DoWhy to check if our target causal effects are identifiable. In case of unobserved confounders that make effects unidentifiable, we run a sensitivity analysis (Cinelli-Hazlett) on a naive linear model and continue if the bias is bounded (and return control to the user if not).
+**[2] Distributed Discovery (Workers):** Worker LLMs process the full dataset in parallel chunks, extracting data for the proposed dimensions. (Future: workers may also critique the global graph based on local evidence, suggesting new confounders found only in specific chunks. The Orchestrator would then reconcile these structural suggestions into a unified model. Currently disabled—measurement extraction is the priority.)
 
-[4] The orchestrator then specifies the statistical model (GLMs) in PyMC and queries the workers for priors. (see: Zhu et al. 2024).
+**[3] Identifiability (DoWhy):** Check if target causal effects are identifiable. In case of unobserved confounders that make effects unidentifiable, run sensitivity analysis (Cinelli-Hazlett) on a naive linear model and continue if bias is bounded (return control to user if not).
 
-[5] Finally we fit the model with PyMC and then the orchestrator runs the proposed interventions and counterfactual simulations and then returns them to the user, ranked by effect size.
+**[4] Model Specification (PyMC):** The orchestrator specifies the statistical model (GLMs) in PyMC and queries the workers for priors. (see: Zhu et al. 2024).
+
+**[5] Inference:** Fit the model with PyMC, run proposed interventions and counterfactual simulations, return results to user ranked by effect size.
 
 ---
 
